@@ -1,6 +1,6 @@
 # KATSU — Spec v0.2: BOS-continuatie (bouwsteen 2)
 
-**Status:** CONCEPT — wacht op antwoorden van Gitchi (§9) en goedkeuring. Er wordt niets gebouwd voor deze spec is goedgekeurd.
+**Status:** GOEDGEKEURD door Gitchi op 9 okt 2026 (voorstellen §9 aanvaard). Volgende stap: bouwen + controlegrafieken.
 **Datum:** 9 oktober 2026
 **Vorige bouwsteen:** v0.1 (sweep + CHoCH) faalde op 2020–2024, ook zonder kosten niet beter dan willekeurig instappen. Zie `docs/stap4_resultaat_bouwsteen1.md`.
 
@@ -34,9 +34,9 @@ Bouwsteen 1 was een ommekeer (tegenbeweging → sweep → CHoCH). Deze bouwsteen
 
 ## 4. Entry, SL, TP
 
-| | Variant A: retest | Variant B: (zie open vraag 1) |
+| | Variant A: retest | Variant B: meteen mee |
 |---|---|---|
-| **Entry** | Limietorder op het **gebroken niveau** (de oude top wordt steun). Geldig **12 candles** (zie open vraag 2), daarna geannuleerd | Voorstel: **marktorder** op de open van de candle na de BOS |
+| **Entry** | Limietorder op het **gebroken niveau** (de oude top wordt steun). Geldig **12 candles** na het signaal, daarna geannuleerd | **Marktorder** op de open van de candle na de BOS |
 | **SL** | HL − buffer (spread + 0,1 × ATR14 setup-timeframe) | idem |
 | **TP** | 2R vast | idem |
 
@@ -56,7 +56,7 @@ Setup-timeframe M5 of M15 × entry A of B × swinglengte L = 1 of L = 3. Zelfde 
 - **Eerst controlegrafieken** (12 willekeurige in-sample setups) en jouw oordeel, pas daarna de backtest.
 
 ## 7. Wat we bewust niet doen
-- **Geen FVG in deze bouwsteen.** FVG-retest is bouwsteen 3 en wordt daar apart getest. Mengen we het hier, dan weten we achteraf niet wat er werkte. (Dit wijkt af van de korte beschrijving in v0.1 §9, zie open vraag 1.)
+- **Geen FVG in deze bouwsteen.** FVG-retest is bouwsteen 3 en wordt daar apart getest. Mengen we het hier, dan weten we achteraf niet wat er werkte. (Dit wijkt af van de korte beschrijving in v0.1 §9; beslist 9 okt 2026.)
 - Geen filters uit het v0.1-rapport (sessie, H4/D1). Die zijn niet bewezen.
 - Geen afstelling van TP, venster of buffer per markt.
 
@@ -64,6 +64,6 @@ Setup-timeframe M5 of M15 × entry A of B × swinglengte L = 1 of L = 3. Zelfde 
 - BOS = close voorbij de vorige swing in trendrichting; CHoCH = breuk tegen de trend: theinnercircletraders.com/understanding-break-of-structure-and-change-of-character
 - Breakout-pullback-continuation (breuk met een close, retest van het niveau, ongeldig bij close terug in de range): luxalgo.com/library/concept/breakout-pullback-continuation
 
-## 9. Open vragen voor Gitchi
-1. **Variant B:** marktorder direct na de BOS (voorstel), of FVG-retest zoals oorspronkelijk in §9 van v0.1?
-2. **Geldigheid van de retest-limiet:** 12 candles (voorstel: 1 uur op M5, 3 uur op M15), 6 zoals v0.1, of 24?
+## 9. Beslissingen (9 okt 2026)
+1. **Variant B = marktorder** direct na de BOS (niet de FVG-retest). ✅
+2. **Retest-limiet geldig 12 candles** (1 uur op M5, 3 uur op M15). ✅

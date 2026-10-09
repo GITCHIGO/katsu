@@ -15,7 +15,8 @@ Onderzoek dat tot de eerste spec leidde: [`docs/onderzoek_forexdetective.md`](do
 - [x] Sweep + CHoCH-detectie met tegenbeweging, trend M15/H1/H4/D1 gelogd (`katsu/signals.py`)
 - [x] Uitvoering op M1: fills, SL/TP, kosten, 1 positie, dagstop (`katsu/execution.py`)
 - [x] Backtest 2020–2024 in R — bouwsteen 1 (sweep + CHoCH) faalt, zie docs/stap4_resultaat_bouwsteen1.md
-- [ ] Bouwsteen 2: BOS-continuatie (spec uitwerken)
+- [x] Bouwsteen 2: spec v0.2 goedgekeurd, BOS-detectie + tests, controlegrafieken
+- [ ] Bouwsteen 2: oordeel Gitchi over de grafieken, daarna backtest 2020–2024
 
 ## Tests draaien
 ```

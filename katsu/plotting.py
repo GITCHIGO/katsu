@@ -58,6 +58,7 @@ def plot_setup(ax, setup: Setup, bars: pd.DataFrame, trade: dict | None, title: 
     if trade and trade.get("fill") is not None:
         e = int(bars.index.searchsorted(trade["entry_time"], side="right")) - 1
         x1 = X(int(bars.index.searchsorted(trade["exit_time"], side="right")) - 1) if trade.get("exit_time") is not None else X(b)
+        x1 = max(x1, X(e) + 1)    # entry en exit in dezelfde candle: toch zichtbaar
         ax.hlines(trade["fill"], X(e), x1, colors="black", linewidth=2.0, label="entry")
         if trade.get("sl") is not None:
             ax.hlines(trade["sl"], X(e), x1, colors="#8e24aa", linewidth=2.2, label="SL")
@@ -80,5 +81,65 @@ def save_setups_pdf(items: list, path: str, intro: str) -> None:
         for setup, bars, trade, title in items:
             fig, ax = plt.subplots(figsize=(11.7, 6.5))
             plot_setup(ax, setup, bars, trade, title)
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize=7, ncol=8, frameon=False)
+            fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
+
+
+# ---------------- Bouwsteen 2: BOS-continuatie ----------------
+
+def _candles(ax, w):
+    x = np.arange(len(w))
+    for xi, (o, h, l, c) in zip(x, w[["open", "high", "low", "close"]].to_numpy()):
+        col = UP_C if c >= o else DN_C
+        ax.vlines(xi, l, h, color=col, linewidth=0.8)
+        ax.add_patch(Rectangle((xi - 0.3, min(o, c)), 0.6, max(abs(c - o), 1e-9), color=col))
+    return x
+
+
+def plot_bos_setup(ax, setup, bars: pd.DataFrame, trade: dict | None, title: str,
+                   server_offset_h: int = 1, before: int = 12, after: int = 30) -> None:
+    a = max(min(setup.level_index, setup.hl_index) - before, 0)
+    b = min(setup.bos_index + after, len(bars) - 1)
+    if trade and trade.get("exit_time") is not None:
+        ex = int(bars.index.searchsorted(trade["exit_time"], side="right")) - 1
+        b = min(max(b, ex + 5), len(bars) - 1)
+    w = bars.iloc[a:b + 1]
+    x = _candles(ax, w)
+
+    def X(i): return i - a
+
+    ax.hlines(setup.level, X(setup.level_index), X(setup.bos_index) + 12, colors="#ef6c00",
+              linestyles="--", linewidth=1.2, label="gebroken niveau (swing)")
+    ax.scatter([X(setup.bos_index)], [w["close"].iloc[X(setup.bos_index)]], marker="o", s=70,
+               facecolors="none", edgecolors="#ef6c00", linewidths=2, zorder=5, label="BOS-close")
+    ax.hlines(setup.hl_price, X(setup.hl_index), X(setup.bos_index) + 1, colors="#1565c0",
+              linestyles="--", linewidth=1.2, label="higher/lower low (SL-basis)")
+    if trade and trade.get("fill") is not None:
+        e = int(bars.index.searchsorted(trade["entry_time"], side="right")) - 1
+        x1 = X(int(bars.index.searchsorted(trade["exit_time"], side="right")) - 1) \
+            if trade.get("exit_time") is not None else X(b)
+        x1 = max(x1, X(e) + 1)    # entry en exit in dezelfde candle: toch zichtbaar
+        ax.hlines(trade["fill"], X(e), x1, colors="black", linewidth=2.0, label="entry")
+        if trade.get("sl") is not None:
+            ax.hlines(trade["sl"], X(e), x1, colors="#8e24aa", linewidth=2.2, label="SL")
+        if trade.get("tp") is not None:
+            ax.hlines(trade["tp"], X(e), x1, colors="#00838f", linewidth=2.2, linestyles="-.", label="TP")
+    step = max(len(x) // 8, 1)
+    lab = (w.index - pd.Timedelta(hours=server_offset_h)).strftime("%d/%m %H:%M")
+    ax.set_xticks(x[::step]); ax.set_xticklabels(lab[::step], rotation=30, fontsize=7)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.set_title(title, fontsize=9)
+    ax.grid(alpha=0.2)
+
+
+def save_bos_pdf(items: list, path: str, intro: str) -> None:
+    """items = lijst van (setup, bars, trade_dict, titel)."""
+    from matplotlib.backends.backend_pdf import PdfPages
+    with PdfPages(path) as pdf:
+        fig = plt.figure(figsize=(11.7, 8.3)); fig.text(0.06, 0.94, intro, va="top", fontsize=11, family="monospace")
+        pdf.savefig(fig); plt.close(fig)
+        for setup, bars, trade, title in items:
+            fig, ax = plt.subplots(figsize=(11.7, 6.5))
+            plot_bos_setup(ax, setup, bars, trade, title)
             ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize=7, ncol=8, frameon=False)
             fig.tight_layout(); pdf.savefig(fig); plt.close(fig)

@@ -18,6 +18,7 @@ from dataclasses import replace
 import numpy as np
 import pandas as pd
 
+from katsu.bos import detect_bos, make_bos_plan
 from katsu.data import resample
 from katsu.execution import M1, Instrument, entry_level_variant_b, make_plan, run_portfolio
 from katsu.signals import LONG, Setup, detect_setups, h1_trend_lookup, multi_tf_trend
@@ -96,6 +97,24 @@ def setup_context(setup: Setup, bars: pd.DataFrame, atr_series: pd.Series, atr_p
     }
 
 
+def bos_context(setup, bars: pd.DataFrame, atr_series: pd.Series, atr_pct: pd.Series,
+                trends: dict) -> dict:
+    """Context van een BOS-setup (spec v0.2 §2, zelfde velden waar ze bestaan)."""
+    t_be = setup.signal_time - pd.Timedelta(hours=SERVER_OFFSET_H)
+    i = setup.bos_index
+    a = float(atr_series.iloc[i])
+    c = float(bars["close"].iloc[i])
+    return {
+        "uur_be": t_be.hour, "dag_be": t_be.day_name(), "sessie": session_be(t_be.hour),
+        "ochtend": 6 <= t_be.hour < 12,
+        "atr": a, "atr_pct": float(atr_pct.iloc[i]),
+        "breuk_voorbij_niveau_atr": abs(c - setup.level) / a if a > 0 else np.nan,
+        "niveau_tot_hl_atr": abs(setup.level - setup.hl_price) / a if a > 0 else np.nan,
+        "candles_niveau_bos": i - setup.level_index,
+        **{f"trend_{k}": v for k, v in trends.items()},
+    }
+
+
 # ---------------- Voorbereiding per markt ----------------
 
 class MarketData:
@@ -116,17 +135,25 @@ class MarketData:
             self.bars[tf] = (b, a, pct)
         return self.bars[tf]
 
-    def setups(self, tf: str, L: int) -> list[Setup]:
-        if (tf, L) not in self._setups:
+    def setups(self, tf: str, L: int, block: str = "sweep") -> list:
+        """block = "sweep" (bouwsteen 1, sweep + CHoCH) of "bos" (bouwsteen 2)."""
+        key = (tf, L, block)
+        if key not in self._setups:
             b, _, _ = self.tf_bars(tf)
-            self._setups[(tf, L)] = detect_setups(b, tf, self.h1_trend, L=L)
-        return self._setups[(tf, L)]
+            if block == "sweep":
+                self._setups[key] = detect_setups(b, tf, self.h1_trend, L=L)
+            elif block == "bos":
+                self._setups[key] = detect_bos(b, tf, self.h1_trend, L=L)
+            else:
+                raise ValueError(f"onbekende bouwsteen: {block}")
+        return self._setups[key]
 
 
 # ---------------- Eén variant ----------------
 
 def run_variant(markets: list[MarketData], tf: str, variant: str, L: int,
-                slip: dict | None = None, day_stop_r: float = -2.0) -> pd.DataFrame:
+                slip: dict | None = None, day_stop_r: float = -2.0,
+                block: str = "sweep") -> pd.DataFrame:
     """
     Speelt één variant af over alle markten samen. `slip` = {markt: slippage in prijs}
     (zonder: de basis uit het Instrument). Geeft één rij per setup: context + uitkomst.
@@ -137,19 +164,23 @@ def run_variant(markets: list[MarketData], tf: str, variant: str, L: int,
         inss[md.name] = ins
         data[md.name] = M1(md.m1, ins)
         b, a, pct = md.tf_bars(tf)
-        for s in md.setups(tf, L):
-            p = make_plan(s, b, tf, a, variant, ins)
-            plans.append(p)
-            ctx = setup_context(s, b, a, pct, md.ctx_trend(s.signal_time))
-            if variant == "B":
-                ctx["limiet"] = entry_level_variant_b(s, b)
+        for s in md.setups(tf, L, block):
+            if block == "bos":
+                plans.append(make_bos_plan(s, tf, a, variant, ins))
+                ctx = bos_context(s, b, a, pct, md.ctx_trend(s.signal_time))
+            else:
+                plans.append(make_plan(s, b, tf, a, variant, ins))
+                ctx = setup_context(s, b, a, pct, md.ctx_trend(s.signal_time))
+                if variant == "B":
+                    ctx["limiet"] = entry_level_variant_b(s, b)
             ctx_rows[(md.name, s.signal_time, s.direction)] = ctx
     out = run_portfolio(plans, data, inss, day_stop_r=day_stop_r, server_offset_h=SERVER_OFFSET_H)
     if out.empty:
         return out
     ctx = pd.DataFrame([ctx_rows[k] for k in zip(out.market, out.signal_time, out.direction)])
     out = pd.concat([out.reset_index(drop=True), ctx], axis=1)
-    out.insert(0, "variant", f"{TF_NAMES.get(tf, tf)}-{variant}-L{L}")
+    prefix = "BOS-" if block == "bos" else ""
+    out.insert(0, "variant", f"{prefix}{TF_NAMES.get(tf, tf)}-{variant}-L{L}")
     out["jaar"] = (out.signal_time - pd.Timedelta(hours=SERVER_OFFSET_H)).dt.year
     return out
 

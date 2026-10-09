@@ -96,3 +96,28 @@ def test_summary_telt_alleen_gesloten_trades():
                       "entry_time": pd.to_datetime(["2024-01-01", None, "2024-01-02", None])})
     s = summary(t, ["market"])
     assert s.loc[0, "trades"] == 2 and s.loc[0, "totaal_r"] == pytest.approx(1.0)
+
+
+def test_bos_variant_gebruikt_dezelfde_bouwstenen():
+    """Bouwsteen 2 in de backtest = detect_bos -> make_bos_plan -> run_portfolio, niets anders."""
+    from katsu.bos import detect_bos, make_bos_plan
+    m1 = _random_m1()
+    ins = Instrument("XAUUSD", slip=0.25)
+    md = MarketData("XAUUSD", m1, ins)
+    for v in ("A", "B"):
+        out = run_variant([md], "5min", v, 1, block="bos")
+        b, a, _ = md.tf_bars("5min")
+        setups = detect_bos(b, "5min", md.h1_trend, L=1)
+        assert len(setups) > 0
+        ref = run_portfolio([make_bos_plan(s, "5min", a, v, ins) for s in setups],
+                            {"XAUUSD": M1(m1, ins)}, {"XAUUSD": ins})
+        assert list(out.status) == list(ref.status)
+        np.testing.assert_allclose(out.r_net.to_numpy(float), ref.r_net.to_numpy(float), equal_nan=True)
+        assert set(out.variant) == {f"BOS-M5-{v}-L1"}
+        assert "niveau_tot_hl_atr" in out.columns
+
+
+def test_onbekende_bouwsteen_geeft_fout():
+    md = MarketData("XAUUSD", _random_m1(days=3), Instrument("XAUUSD"))
+    with pytest.raises(ValueError):
+        md.setups("5min", 1, "fibonacci")
