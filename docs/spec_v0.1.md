@@ -43,9 +43,12 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 - Up: laatste twee bevestigde swing highs stijgend **en** laatste twee swing lows stijgend.
 - Down: beide dalend.
 - Anders neutraal → **geen trades**.
+- De H1-swings gebruiken altijd **L = 3** (de L-varianten in §8 gelden voor de setup-timeframe).
+- De trend wordt bepaald op het moment van het signaal, met alleen H1-candles die dan gesloten zijn.
 
 **Liquidity sweep (long; short omgekeerd):**
-- Een gesloten M5-candle waarvan de low **onder** de laatste bevestigde swing low komt (gevormd in de laatste 24 candles),
+- Een gesloten M5-candle waarvan de low **onder** de laatste bevestigde swing low komt (gevormd in de laatste 24 candles, en bevestigd vóór deze candle),
+- op voorwaarde dat die swing low nog **intact** is: sinds zijn ontstaan heeft geen enkele candle eronder gesloten (een doorbroken niveau is geen liquiditeit meer),
 - en die **boven** die swing low sluit.
 - Sweep-low = de laagste low van de sweep.
 - Wordt de swing low daarna met een **close** doorbroken, dan was het geen sweep maar een *liquidity run* → setup vervalt.
@@ -53,7 +56,8 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 
 **CHoCH (long; short omgekeerd):**
 - Binnen 12 candles na de sweep sluit een M5-candle **met de body boven** de laatste bevestigde swing high die vóór de sweep lag (een wick alleen telt niet).
-- Valt de koers eerst onder de sweep-low, dan vervalt de setup.
+- Valt de koers eerst onder de sweep-low, dan vervalt de setup. Sluit die candle wel weer boven het niveau, dan is hij zelf een nieuwe sweep (met een diepere sweep-low).
+- Sluit een candle onder het geveegde niveau vóór de CHoCH, dan is het een run → setup vervalt.
 
 **Richting:** alleen longs in een H1-uptrend, alleen shorts in een H1-downtrend.
 
