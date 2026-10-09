@@ -1,0 +1,52 @@
+"""
+Stap 4: backtest op de in-sample periode (2020–2024), spec §8.
+
+8 varianten (M5/M15 × entry A/B × L=1/3) × 3 slippage-niveaus, goud en EURUSD samen
+(1 positie per markt, gezamenlijke dagstop −2R).
+De out-of-sample periode (vanaf 1 jan 2025) wordt weggesneden VÓÓR er iets berekend wordt.
+
+Gebruik: python -m scripts.backtest <xau_m1.pkl> <eur_m1.pkl> <uitmap>
+Schrijft: <uitmap>/trades_insample.pkl (alle setups + uitkomst + context)
+"""
+import os
+import sys
+import time
+
+import pandas as pd
+
+from katsu.backtest import MarketData, in_sample, run_variant, summary
+from katsu.execution import EURUSD, XAUUSD
+
+SLIPPAGE = {  # spec §5: stress laag / basis / stress hoog
+    "laag": {"XAUUSD": 0.10, "EURUSD": 0.00001},
+    "basis": {"XAUUSD": 0.25, "EURUSD": 0.00003},
+    "hoog": {"XAUUSD": 0.50, "EURUSD": 0.00006},
+}
+VARIANTS = [(tf, v, L) for tf in ("5min", "15min") for v in ("A", "B") for L in (1, 3)]
+
+
+def main(xau_path, eur_path, outdir):
+    os.makedirs(outdir, exist_ok=True)
+    markets = []
+    for name, path, ins in (("XAUUSD", xau_path, XAUUSD), ("EURUSD", eur_path, EURUSD)):
+        m1 = in_sample(pd.read_pickle(path))
+        assert m1.index.max() < pd.Timestamp("2025-01-01"), "out-of-sample data gelekt"
+        markets.append(MarketData(name, m1, ins))
+    allt = []
+    for tf, v, L in VARIANTS:
+        for lvl, slip in SLIPPAGE.items():
+            t0 = time.time()
+            out = run_variant(markets, tf, v, L, slip=slip)
+            out["slippage"] = lvl
+            allt.append(out)
+            s = summary(out, ["market"])
+            print(f"{out.variant.iloc[0]:10s} {lvl:5s} "
+                  + "  ".join(f"{r.market} n={r.trades} gem={r.gem_r:+.3f}" for r in s.itertuples())
+                  + f"  ({time.time() - t0:.0f}s)", flush=True)
+    trades = pd.concat(allt, ignore_index=True)
+    trades.to_pickle(os.path.join(outdir, "trades_insample.pkl"))
+    print("klaar:", len(trades), "rijen")
+
+
+if __name__ == "__main__":
+    main(*sys.argv[1:4])
