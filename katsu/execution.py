@@ -31,12 +31,18 @@ class Instrument:
     tick: float = 0.01            # kleinste prijsstap
     point: float = 0.01           # eenheid van de MT5-spreadkolom
     min_spread: float = 0.10      # minimum spread in prijs (spec §2)
-    slip_ticks: int = 1           # slippage per markt-/stopuitvoering (spec §5)
+    slip: float = 0.25            # slippage in prijs per markt-/stopuitvoering (spec §5, basis)
     commission: float = 0.08      # commissie round turn per eenheid, in prijs (€7/lot ≈ $0,08/oz)
     rr: float = 2.0               # TP in R
     sl_atr_buffer: float = 0.1    # SL-buffer = spread + 0,1 × ATR
     min_sl_atr: float = 1.0       # minimale SL-afstand = 1 × ATR
     limit_valid_bars: int = 6     # variant B: geldigheid limietorder in setup-candles
+
+
+# Vastgelegde instellingen per markt (spec §2 en §5).
+XAUUSD = Instrument("XAUUSD", tick=0.01, point=0.01, min_spread=0.10, slip=0.25, commission=0.08)
+EURUSD = Instrument("EURUSD", tick=0.00001, point=0.00001, min_spread=0.00001, slip=0.00003,
+                    commission=0.00008)   # €7/lot ≈ $8 per 100.000 = 0,8 pip
 
 
 @dataclass(frozen=True)
@@ -48,6 +54,7 @@ class OrderPlan:
     atr: float                      # ATR14 van de setup-timeframe op het signaal
     limit_price: float | None = None
     valid_until: pd.Timestamp | None = None
+    market: str = "XAUUSD"
 
 
 @dataclass
@@ -87,7 +94,7 @@ def _round_tick(x: float, tick: float) -> float:
 def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     long = plan.direction == LONG
     s = 1.0 if long else -1.0
-    slip = ins.slip_ticks * ins.tick
+    slip = ins.slip
     i = int(d.t.searchsorted(plan.signal_time))      # eerste M1-candle die start op/na het signaal
     if i >= len(d.t):
         return Trade(plan.direction, plan.signal_time, "geen_data")
@@ -167,36 +174,40 @@ def make_plan(setup: Setup, bars: pd.DataFrame, tf: str, atr_series: pd.Series,
               variant: str, ins: Instrument) -> OrderPlan:
     atr = float(atr_series.iloc[setup.choch_index])
     if variant == "A":
-        return OrderPlan(setup.direction, setup.signal_time, "market", setup.sweep_extreme, atr)
+        return OrderPlan(setup.direction, setup.signal_time, "market", setup.sweep_extreme, atr,
+                         market=ins.name)
     lvl = entry_level_variant_b(setup, bars)
     valid = setup.signal_time + ins.limit_valid_bars * pd.Timedelta(tf)
-    return OrderPlan(setup.direction, setup.signal_time, "limit", setup.sweep_extreme, atr, lvl, valid)
+    return OrderPlan(setup.direction, setup.signal_time, "limit", setup.sweep_extreme, atr, lvl, valid,
+                     market=ins.name)
 
 
-# ---------------- Portefeuille: 1 positie, dagstop ----------------
+# ---------------- Portefeuille: 1 positie per markt, gezamenlijke dagstop ----------------
 
-def run_portfolio(plans: list[OrderPlan], d: M1, ins: Instrument, day_stop_r: float = -2.0,
+def run_portfolio(plans: list[OrderPlan], data: dict, instruments: dict, day_stop_r: float = -2.0,
                   server_offset_h: int = 1) -> pd.DataFrame:
     """
-    Speelt de plannen in tijdsvolgorde af:
-    - maximaal 1 positie (of lopende limietorder) tegelijk;
-    - na day_stop_r (som netto R) op een Brusselse kalenderdag geen nieuwe trades die dag.
-    Overgeslagen setups worden ook gelogd (status 'positie_open' of 'dagstop').
+    Speelt de plannen van alle markten in tijdsvolgorde af (spec §6):
+    - maximaal 1 positie (of lopende limietorder) per markt;
+    - na day_stop_r (som netto R over ALLE markten) op een Brusselse kalenderdag geen nieuwe trades;
+    - overgeslagen setups worden ook gelogd (status 'positie_open' of 'dagstop').
+    `data` en `instruments` zijn dicts per marktnaam (M1-object en Instrument).
     """
     rows = []
-    busy_until = pd.Timestamp.min
+    busy_until: dict = {}
     day_r: dict = {}
-    for p in sorted(plans, key=lambda x: x.signal_time):
+    for p in sorted(plans, key=lambda x: (x.signal_time, x.market)):
         day = (p.signal_time - pd.Timedelta(hours=server_offset_h)).date()
-        if p.signal_time < busy_until:
-            rows.append({"direction": p.direction, "signal_time": p.signal_time, "status": "positie_open"}); continue
+        base = {"market": p.market, "direction": p.direction, "signal_time": p.signal_time}
+        if p.signal_time < busy_until.get(p.market, pd.Timestamp.min):
+            rows.append({**base, "status": "positie_open"}); continue
         if day_r.get(day, 0.0) <= day_stop_r:
-            rows.append({"direction": p.direction, "signal_time": p.signal_time, "status": "dagstop"}); continue
-        tr = simulate(p, d, ins)
+            rows.append({**base, "status": "dagstop"}); continue
+        tr = simulate(p, data[p.market], instruments[p.market])
         if tr.status == "gesloten":
-            busy_until = tr.exit_time + pd.Timedelta(minutes=1)
+            busy_until[p.market] = tr.exit_time + pd.Timedelta(minutes=1)
             day_r[day] = day_r.get(day, 0.0) + tr.r_net
         elif tr.status == "niet_gevuld" and p.valid_until is not None:
-            busy_until = p.valid_until
-        rows.append(tr.as_dict())
+            busy_until[p.market] = p.valid_until
+        rows.append({"market": p.market, **tr.as_dict()})
     return pd.DataFrame(rows)

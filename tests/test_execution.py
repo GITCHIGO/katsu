@@ -3,6 +3,7 @@ Handberekende scenario's voor de uitvoering op M1.
 
 Vaste instellingen (Instrument-standaard): tick 0,01 · minimum spread 0,10 ·
 slippage 1 tick = 0,01 · commissie 0,08 · TP = 2R · SL-buffer = spread + 0,1×ATR.
+De tests gebruiken slippage 0,01 (de echte basis is $0,25, zie spec).
 De spreadkolom staat op 5 punten (= 0,05), dus het minimum 0,10 geldt.
 
 LONG-basis: signaal 10:00, sweep-low (anchor) 98,00, ATR 1,0
@@ -17,7 +18,7 @@ import pytest
 
 from katsu.execution import M1, Instrument, OrderPlan, run_portfolio, simulate
 
-INS = Instrument()
+INS = Instrument(slip=0.01)   # 1 tick: houdt de handberekening eenvoudig
 T0 = pd.Timestamp("2025-01-06 10:00")
 
 
@@ -115,7 +116,7 @@ def test_portefeuille_een_positie_en_dagstop():
         rows += [(100, 100.5, 99.8, 100.2), (100.2, 100.5, 97.5, 98.0)]
     d = m1(rows)
     p = [OrderPlan("LONG", T0 + pd.Timedelta(minutes=m), "market", 98.0, 1.0) for m in (0, 1, 2, 4)]
-    out = run_portfolio(p, d, INS)
+    out = run_portfolio(p, {"XAUUSD": d}, {"XAUUSD": INS})
     # 10:00 gesloten (SL om 10:01) · 10:01 positie nog open · 10:02 gesloten (SL 10:03) ·
     # 10:04: dag al op ≈ −2,1R -> dagstop
     assert list(out.status) == ["gesloten", "positie_open", "gesloten", "dagstop"]
@@ -134,3 +135,24 @@ def test_variant_b_niveau_fvg_of_midden():
     bars.loc[idx[3], "low"] = 101.5          # ook geen gat tussen candle 1 en 3
     # geen FVG -> midden tussen sweep-low 97 en CHoCH-close 105,5 = 101,25
     assert entry_level_variant_b(s, bars) == 101.25
+
+
+def test_portefeuille_per_markt_en_gezamenlijke_dagstop():
+    rows = []
+    for _ in range(3):
+        rows += [(100, 100.5, 99.8, 100.2), (100.2, 100.5, 97.5, 98.0)]
+    g, e = m1(rows), m1(rows)
+    ins = {"XAUUSD": INS, "EURUSD": INS}
+    p = [OrderPlan("LONG", T0, "market", 98.0, 1.0, market="XAUUSD"),
+         OrderPlan("LONG", T0, "market", 98.0, 1.0, market="EURUSD"),    # zelfde moment, andere markt: mag
+         OrderPlan("LONG", T0 + pd.Timedelta(minutes=2), "market", 98.0, 1.0, market="XAUUSD")]
+    out = run_portfolio(p, {"XAUUSD": g, "EURUSD": e}, ins)
+    # twee verliezers samen ≈ −2,1R -> derde setup (andere markt of niet) valt onder de dagstop
+    assert list(zip(out.market, out.status)) == [("EURUSD", "gesloten"), ("XAUUSD", "gesloten"),
+                                                  ("XAUUSD", "dagstop")]
+
+
+def test_vastgelegde_instellingen_per_markt():
+    from katsu.execution import EURUSD, XAUUSD
+    assert (XAUUSD.slip, XAUUSD.min_spread, XAUUSD.commission) == (0.25, 0.10, 0.08)
+    assert (EURUSD.slip, EURUSD.min_spread) == (0.00003, 0.00001)

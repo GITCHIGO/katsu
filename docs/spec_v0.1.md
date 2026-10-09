@@ -24,8 +24,9 @@ Eén vraag beantwoorden: **heeft "sweep + CHoCH met de trend" een edge na kosten
 Niet: zo veel mogelijk winst uit het verleden persen.
 
 ## 2. Markt en data
-- **Primaire markt: XAUUSD** (goud). Daar ligt het onderzoek en er zijn meer setups.
-- **EURUSD:** zelfde regels, géén aanpassing, alleen als robuustheidscheck. Werkt het daar ook, dan is dat een sterk teken.
+- **Twee markten met exact dezelfde regels: XAUUSD (goud) en EURUSD** (beslist 9 okt 2026).
+- Geen aparte afstelling per markt. De variant wordt gekozen op 2020–2024 van beide markten samen.
+- Een regel die op twee markten werkt is geloofwaardiger; de succescriteria (§8) gelden **per markt apart**. Live gaat alleen de markt die slaagt (vooraf vastgelegd, geen achteraf-keuze).
 - **Data:** IC Markets MT5 M1, **2 jan 2020 – 6 okt 2026** (bid-prijzen, spread per minuut). Gecontroleerd 9 okt 2026: geen dubbele of onmogelijke candles; de enige gaten zijn kerst/nieuwjaar en marktsluitingen; identiek aan de eerdere export in de overlap.
 - **Let op spread:** MT5 slaat per candle de *laagste* spread op. Bij EURUSD is die bijna altijd 0 (raw-account). De backtest gebruikt daarom een minimum: goud $0,10, EURUSD 0,1 pip, plus 1 tick slippage per uitvoering.
 
@@ -78,7 +79,7 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 2. SL en TP worden gecontroleerd op **M1-high/low**, niet alleen op de close.
 3. Raakt één M1-candle zowel SL als TP → **SL telt** (conservatief).
 4. **Kosten:** spread uit de data (met minimum, zie §2) + commissie €7 per lot round turn (bevestigd op echte goudtrade: −0,14 op 0,02 lot; raw-account) + slippage op elke markt- en stopuitvoering.
-   - **Slippage (vastgelegd 9 okt 2026, vóór enig resultaat):** goud **$0,25** als basis; stresstest op $0,10 en $0,50. Succescriteria moeten gehaald worden bij de basis; bij de hoogste stresswaarde mag het resultaat niet negatief zijn.
+   - **Slippage (vastgelegd 9 okt 2026, vóór enig resultaat):** goud **$0,25** als basis, stresstest $0,10 en $0,50; EURUSD **0,3 pip** als basis, stresstest 0,1 en 0,6 pip. Succescriteria moeten gehaald worden bij de basis; bij de hoogste stresswaarde mag het resultaat niet negatief zijn.
    - Reden: 1 tick bleek te optimistisch. Op Gitchi's EURUSD-trades lag het echte SL-verlies mediaan ~1,4 pip boven het geplande (19 trades, demo, inclusief entryverschillen); op zijn enige echte goudtrade $1,19.
    - Na de demo wordt de slippage vervangen door de gemeten waarde.
 5. Geen data van een ander instrument, geen fallbacks.
@@ -87,8 +88,8 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 ## 6. Risico
 - **1% per trade** (keuze Gitchi, eigen kapitaal), alles gerapporteerd in R.
 - Let op: bij een rekening van €300 is de kleinste goudlot (0,01) met een SL van ~$6 al ≈ 1,7% risico. Echt 1% kan pas vanaf ~€550, of met een cent-account.
-- **Maximaal 1 open trade.**
-- **Dagstop:** na −2R op een dag geen nieuwe trades meer.
+- **Maximaal 1 open trade per markt** (dus maximaal 2 tegelijk). Let op: goud en EURUSD reageren allebei op de dollar; bij gelijktijdige trades kan het risico samen 2% zijn.
+- **Dagstop:** na −2R op een dag (beide markten samen) geen nieuwe trades meer.
 - Geen prop firm gepland → geen prop-regels nodig.
 
 ## 7. Wat we loggen per setup (ook als hij niet getradeerd wordt)
@@ -129,7 +130,7 @@ Faalt een bouwsteen: noteren en naar de volgende. Niet bijschaven tot het past.
 - Swing 3-candle rule, bevestigd na sluiting: liquidityscan.io/blog/what-is-a-swing-high-and-swing-low-in-ict-the-3-candle-rule
 
 ## 11. Beslissingen (9 okt 2026)
-1. **Markt:** goud primair, EURUSD alleen als check. ✅
+1. **Markt:** goud én EURUSD, zelfde regels, criteria per markt (gewijzigd 9 okt 2026; was: goud primair). ✅
 2. **Risico:** 1% per trade. ✅
 3. **Prop firm:** nee, alleen eigen kapitaal. ✅
 5. **Demo-account KATSU:** IC Markets Raw Spread, EUR, €5.000, hefboom 1:200 (gelijk aan live). Symboolnaam goud: `XAUUSD`.
