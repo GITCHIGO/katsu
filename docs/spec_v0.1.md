@@ -106,6 +106,7 @@ Deze labels worden **niet** als filter gebruikt in v0.1, alleen gemeten.
 - **Als er oudere data komt:** in-sample = alles vóór 1 jan 2025; out-of-sample = 2025–2026.
 - **Zonder oudere data:** in-sample = 2025; out-of-sample = 2026.
 - Out-of-sample wordt **pas bekeken als de spec bevroren is**, en maar één keer.
+- **Keuzeregel in-sample (vastgelegd 9 okt 2026, vóór de eerste backtest):** een variant komt in aanmerking als hij op 2020–2024, bij basis-slippage, op **beide markten** een positieve gemiddelde netto R heeft en per markt **minstens 100 trades**. Van die varianten wint de hoogste gemiddelde netto R over beide markten samen; bij gelijkspel de variant met meer trades. Komt geen enkele variant in aanmerking, dan faalt deze bouwsteen: geen eindtest, door naar bouwsteen 2 (BOS).
 - **Toegestane varianten (8 in totaal, niet meer):** setup M5 of M15 × entry A of B × swinglengte L = 1 of L = 3.
 - **Ochtend** (06–12u BE) wordt apart gerapporteerd, niet als filter gekozen.
 
