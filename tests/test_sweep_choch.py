@@ -1,19 +1,21 @@
 """
 Handberekende scenario's voor sweep + CHoCH (spec §3).
 
-Basisscenario LONG (L=1, M5-candles), candle per candle:
+Basisscenario LONG (L=1, M5-candles). Vóór de sweep zit M5 in een correctie
+met lower highs (115 -> 113) en lower lows (106 -> 103):
   idx  high   low   open  close
-   0   105    100   102   103
-   1   110    104   105   109   <- swing high 110 (bevestigd na candle 2)
-   2   108    102   108   103
-   3   106     98   103    99   <- swing low 98 (bevestigd na candle 4)
-   4   107    100   100   106   <- swing high 107 (bevestigd na candle 5)
-   5   104     97   103    99   <- SWEEP: low 97 onder 98, close 99 boven 98
-   6   106    100    99   105
-   7   109    104   105   108   <- CHoCH: close 108 boven laatste swing high vóór de sweep (107)
+   0   112    108   110   111
+   1   115    110   111   114   <- swing high 115 (bevestigd na 2)
+   2   111    106   113   107   <- swing low 106 (bevestigd na 3)
+   3   113    108   107   112   <- lower high 113 (bevestigd na 4)
+   4   110    103   111   104   <- lower low 103 (bevestigd na 5)
+   5   109    105   104   108
+   6   107    102   106   104   <- SWEEP: low 102 onder 103, close 104 erboven
+   7   112    104   104   111      (close 111 nog ONDER de lower high 113: geen CHoCH)
+   8   115    110   111   114   <- CHoCH: close 114 boven de laatste lower high 113
 
-Verwacht: 1 LONG-signaal, sweep op 5, sweep-low 97, geveegd niveau 98,
-CHoCH op 7, CHoCH-niveau 107, signaal op het einde van candle 7 (10:40).
+Verwacht: 1 LONG-signaal, sweep op 6, sweep-low 102, geveegd niveau 103,
+CHoCH op 8, CHoCH-niveau 113, signaal op het einde van candle 8 (10:45).
 """
 import pandas as pd
 
@@ -21,14 +23,15 @@ from katsu.signals import detect_setups
 from katsu.structure import DOWN, NEUTRAL, UP
 
 BASE = [  # high, low, open, close
-    (105, 100, 102, 103),
-    (110, 104, 105, 109),
-    (108, 102, 108, 103),
-    (106, 98, 103, 99),
-    (107, 100, 100, 106),
-    (104, 97, 103, 99),
-    (106, 100, 99, 105),
-    (109, 104, 105, 108),
+    (112, 108, 110, 111),
+    (115, 110, 111, 114),
+    (111, 106, 113, 107),
+    (113, 108, 107, 112),
+    (110, 103, 111, 104),
+    (109, 105, 104, 108),
+    (107, 102, 106, 104),
+    (112, 104, 104, 111),
+    (115, 110, 111, 114),
 ]
 
 
@@ -57,11 +60,11 @@ def test_geldige_long():
     assert len(sig) == 1
     s = sig[0]
     assert s.direction == "LONG"
-    assert (s.sweep_index, s.sweep_extreme, s.swept_level) == (5, 97, 98)
-    assert (s.choch_index, s.choch_level) == (7, 107)
-    assert s.signal_time == pd.Timestamp("2025-01-06 10:40")
-    # body van de sweep-candle: |99-103| / (104-97)
-    assert abs(s.sweep_body_pct - 4 / 7) < 1e-9
+    assert (s.sweep_index, s.sweep_extreme, s.swept_level) == (6, 102, 103)
+    assert (s.choch_index, s.choch_level) == (8, 113)
+    assert s.signal_time == pd.Timestamp("2025-01-06 10:45")
+    # body van de sweep-candle: |104-106| / (107-102)
+    assert abs(s.sweep_body_pct - 0.4) < 1e-9
 
 
 def test_geldige_short_gespiegeld():
@@ -69,36 +72,36 @@ def test_geldige_short_gespiegeld():
     assert len(sig) == 1
     s = sig[0]
     assert s.direction == "SHORT"
-    assert (s.sweep_extreme, s.swept_level, s.choch_level) == (300 - 97, 300 - 98, 300 - 107)
+    assert (s.sweep_extreme, s.swept_level, s.choch_level) == (300 - 102, 300 - 103, 300 - 113)
 
 
 def test_close_onder_niveau_is_run_geen_sweep():
     rows = list(BASE)
-    rows[5] = (104, 97, 103, 97.5)      # sluit ONDER 98 -> run: niveau 98 is doorbroken
-    rows[6] = (106, 97.5, 97.5, 105)    # prikt weer onder 98 en sluit erboven
-    # Candle 5 is geen sweep (close onder het niveau). Daardoor is niveau 98 "opgebruikt":
-    # candle 6 kan het niet meer sweepen. Geen signaal.
+    rows[6] = (107, 102, 106, 102.5)    # sluit ONDER 103 -> run: niveau 103 is doorbroken
+    rows[7] = (112, 102.5, 102.5, 111)  # prikt weer onder 103 en sluit erboven
+    # Candle 6 is geen sweep (close onder het niveau). Daardoor is niveau 103 "opgebruikt":
+    # candle 7 kan het niet meer sweepen. Geen signaal.
     assert run(rows) == []
 
 
 def test_close_onder_geveegd_niveau_na_sweep_maakt_setup_ongeldig():
     rows = list(BASE)
-    rows[6] = (100, 97.5, 99, 97.8)     # sluit onder 98 na de sweep -> run, setup vervalt
-    rows[7] = (109, 97.6, 97.8, 108)
+    rows[7] = (105, 102.5, 104, 102.8)  # sluit onder 103 na de sweep -> run, setup vervalt
+    rows[8] = (115, 102.6, 102.8, 114)
     sig = run(rows)
-    # sweep op 5 vervalt. Candle 7 (low 97.6 < 98, close 108 > 98) is een nieuwe sweep,
-    # maar er volgt geen CHoCH meer -> geen signaal.
+    # sweep op 6 vervalt; niveau 103 is doorbroken en candle 8 komt niet onder sweep-low 102
+    # -> geen nieuwe sweep, geen signaal.
     assert sig == []
 
 
 def test_choch_alleen_met_wick_telt_niet():
     rows = list(BASE)
-    rows[7] = (109, 104, 105, 106.5)    # wick tot 109, close 106,5 onder 107
+    rows[8] = (115, 110, 111, 112.5)    # wick tot 115, close 112,5 onder 113
     assert run(rows) == []
 
 
 def test_choch_buiten_venster_telt_niet():
-    # met een venster van 1 candle moet de CHoCH op candle 6 komen; hij komt pas op 7
+    # met een venster van 1 candle moet de CHoCH op candle 7 komen; hij komt pas op 8
     assert run(BASE, choch_window=1) == []
     assert len(run(BASE, choch_window=2)) == 1
 
@@ -110,24 +113,51 @@ def test_geen_trade_tegen_of_zonder_trend():
 
 def test_lager_dan_sweep_low_vervangt_de_setup():
     rows = list(BASE)
-    rows[6] = (106, 96, 99, 105)        # zakt onder sweep-low 97, sluit boven 98 -> nieuwe sweep
+    rows[7] = (112, 101, 104, 111)      # zakt onder sweep-low 102, sluit boven 103 -> nieuwe sweep
     sig = run(rows)
     assert len(sig) == 1
-    assert (sig[0].sweep_index, sig[0].sweep_extreme) == (6, 96)
+    assert (sig[0].sweep_index, sig[0].sweep_extreme) == (7, 101)
 
 
 def test_swing_buiten_lookback_telt_niet():
-    # swing low op 3, sweep op 5: met lookback 1 ligt de swing te ver terug
+    # swing low op 4, sweep op 6: met lookback 1 ligt de swing te ver terug
     assert run(BASE, sweep_lookback=1) == []
     assert len(run(BASE, sweep_lookback=2)) == 1
 
 
 def test_swing_nog_niet_bevestigd_kan_niet_geveegd_worden():
     rows = list(BASE)
-    # candle 4 prikt al onder 98 en sluit erboven, maar swing low 3 is pas bevestigd ná candle 4
-    rows[4] = (107, 97.9, 100, 106)
+    # candle 5 prikt onder 103, maar swing low 4 wordt pas bevestigd ná candle 5
+    rows[5] = (109, 102.9, 104, 108)
     sig = run(rows)
-    assert all(s.sweep_index != 4 for s in sig)
+    assert all(s.sweep_index != 5 for s in sig)
+
+
+def test_zonder_tegenbeweging_geen_choch():
+    rows = list(BASE)
+    rows[3] = (117, 108, 107, 112)      # higher high 117 i.p.v. lower high 113: geen dalende structuur
+    assert run(rows) == []
+
+
+def test_tegenbeweging_regel_is_echt_nodig():
+    # Lows dalend maar highs STIJGEND (115 -> 113 wordt 115 -> 116): geen echte correctie.
+    rows = list(BASE)
+    rows[1] = (114, 110, 111, 113)      # eerste swing high 114 ...
+    rows[3] = (116, 108, 107, 112)      # ... tweede 116: higher high
+    rows[8] = (118, 110, 111, 117)      # close 117 boven 116: zonder regel zou dit een signaal zijn
+    assert run(rows) == []
+    assert len(run(rows, require_counter=False)) == 1
+
+
+def test_multi_tf_trend_geeft_vier_timeframes():
+    from katsu.signals import multi_tf_trend
+    idx = pd.date_range("2025-01-06", periods=60 * 24 * 3, freq="1min")
+    import numpy as np
+    p = 100 + np.sin(np.arange(len(idx)) / 200.0) * 5
+    m1 = pd.DataFrame({"open": p, "high": p + .1, "low": p - .1, "close": p, "tickvol": 1, "spread": 5}, index=idx)
+    out = multi_tf_trend(m1)(pd.Timestamp("2025-01-08 12:00"))
+    assert set(out) == {"M15", "H1", "H4", "D1"}
+    assert all(v in ("UP", "DOWN", "NEUTRAL") for v in out.values())
 
 
 def test_h1_trend_kijkt_niet_vooruit():

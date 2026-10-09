@@ -12,7 +12,7 @@ Onderzoek dat tot de eerste spec leidde: [`docs/onderzoek_forexdetective.md`](do
 ## Status
 - [x] Data-loader met controle (`katsu/data.py`)
 - [x] Swings en trend zonder vooruitkijken (`katsu/structure.py`)
-- [x] Sweep + CHoCH-detectie (`katsu/signals.py`)
+- [x] Sweep + CHoCH-detectie met tegenbeweging, trend M15/H1/H4/D1 gelogd (`katsu/signals.py`)
 - [x] Uitvoering op M1: fills, SL/TP, kosten, 1 positie, dagstop (`katsu/execution.py`)
 - [ ] Backtest-rapport in R
 

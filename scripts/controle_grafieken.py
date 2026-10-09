@@ -11,12 +11,14 @@ import pandas as pd
 from katsu.data import resample
 from katsu.execution import EURUSD, XAUUSD, M1, make_plan, simulate
 from katsu.plotting import save_setups_pdf
-from katsu.signals import detect_setups, h1_trend_lookup
+from katsu.signals import detect_setups, h1_trend_lookup, multi_tf_trend
 from katsu.structure import atr
 
 INTRO = """KATSU — controle stap 3
 
 Per pagina één setup (sweep + CHoCH met de trend). Tijden in Brusselse tijd.
+NIEUW: vóór de sweep moet M5/M15 een tegenbeweging tonen (lower highs + lower lows bij een long),
+en de CHoCH is de close voorbij de laatste lower high. Bovenaan: trend op M15/H1/H4/D1 (alleen info).
   blauwe stippellijn   = geveegde swing (het liquiditeitsniveau)
   blauw driehoekje     = sweep-candle (wick door het niveau, close terug)
   oranje stippellijn   = swing die de CHoCH moest breken
@@ -36,6 +38,7 @@ def main(xau_path, eur_path, out):
     for name, path, ins in (("XAUUSD", xau_path, XAUUSD), ("EURUSD", eur_path, EURUSD)):
         m1 = pd.read_pickle(path); m1 = m1[m1.index < "2025-01-01"]
         trend = h1_trend_lookup(resample(m1, "1h"), 3)
+        ctx = multi_tf_trend(m1)
         d = M1(m1, ins)
         for tf in ("5min", "15min"):
             bars = resample(m1, tf); a = atr(bars, 14)
@@ -48,7 +51,8 @@ def main(xau_path, eur_path, out):
                 t_be = (s.signal_time - pd.Timedelta(hours=1)).strftime("%a %d/%m/%Y %H:%M")
                 uit = tr["exit_reason"] or tr["status"]
                 tfn = "M5" if tf == "5min" else "M15"
-                title = f"#{n}  {name}  {tfn}  {s.direction}  signaal {t_be} (BE)  uitkomst: {uit}"
+                tr_ctx = "  ".join(f"{k}:{v}" for k, v in ctx(s.signal_time).items())
+                title = f"#{n}  {name}  {tfn}  {s.direction}  signaal {t_be} (BE)  uitkomst: {uit}\ntrend  {tr_ctx}"
                 items.append((s, bars, tr, title)); n += 1
     save_setups_pdf(items, out, INTRO)
     print(f"{len(items)} setups -> {out}")

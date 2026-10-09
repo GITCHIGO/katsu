@@ -80,5 +80,5 @@ def save_setups_pdf(items: list, path: str, intro: str) -> None:
         for setup, bars, trade, title in items:
             fig, ax = plt.subplots(figsize=(11.7, 6.5))
             plot_setup(ax, setup, bars, trade, title)
-            ax.legend(loc="upper left", fontsize=7, ncol=4)
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize=7, ncol=8, frameon=False)
             fig.tight_layout(); pdf.savefig(fig); plt.close(fig)

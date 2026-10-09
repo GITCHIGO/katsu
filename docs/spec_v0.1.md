@@ -55,8 +55,13 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 - Wordt de swing low daarna met een **close** doorbroken, dan was het geen sweep maar een *liquidity run* → setup vervalt.
 - Gelogd (geen filter): soort niveau (gewone swing, equal lows, vorige-weeklow) en de body van de reversal-candle (% van de range).
 
+**Tegenbeweging vóór de sweep (toegevoegd 9 okt 2026, na visuele controle):**
+- Een CHoCH is de breuk van de **bestaande** trend. Daarom moet de setup-timeframe vóór de sweep in een structuur **tegen** de H1-trend zitten.
+- Long: laatste twee bevestigde swing highs dalend (lower high) **én** laatste twee swing lows dalend (lower low). Short omgekeerd.
+- Zonder die tegenbeweging: geen setup.
+
 **CHoCH (long; short omgekeerd):**
-- Binnen 12 candles na de sweep sluit een M5-candle **met de body boven** de laatste bevestigde swing high die vóór de sweep lag (een wick alleen telt niet).
+- Binnen 12 candles na de sweep sluit een M5-candle **met de body boven** de laatste bevestigde swing high die vóór de sweep lag, dus de laatste **lower high** (een wick alleen telt niet).
 - Valt de koers eerst onder de sweep-low, dan vervalt de setup. Sluit die candle wel weer boven het niveau, dan is hij zelf een nieuwe sweep (met een diepere sweep-low).
 - Sluit een candle onder het geveegde niveau vóór de CHoCH, dan is het een run → setup vervalt.
 
@@ -94,6 +99,7 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 
 ## 7. Wat we loggen per setup (ook als hij niet getradeerd wordt)
 Uur en dag (Brussel), sessie, ATR-percentiel, trendsterkte H1, sweepdiepte, tijd tussen sweep en CHoCH, SL-grootte, en of er ook een FVG/order block was.
+- **Trend op M15, H1, H4 en D1** op het moment van het signaal (zelfde swing-definitie, L = 3; D1/H4 volgen de servertijd). Alleen gelogd, **geen filter** in v0.1. Blijkt een combinatie sterk, dan wordt die eerst als regel vastgelegd in een volgende spec en opnieuw getest.
 Deze labels worden **niet** als filter gebruikt in v0.1, alleen gemeten.
 
 ## 8. Testplan (vooraf vastgelegd)
