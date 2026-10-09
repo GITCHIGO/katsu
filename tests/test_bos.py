@@ -119,3 +119,4 @@ def test_orderplan_variant_a_en_b():
     assert a.valid_until == pd.Timestamp("2025-01-06 11:55")
     b = make_bos_plan(s, "5min", atr, "B", ins)
     assert (b.kind, b.anchor, b.signal_time) == ("market", 100, pd.Timestamp("2025-01-06 10:55"))
+    assert a.max_cost_r == b.max_cost_r == 0.2      # kostenplafond 0,2R op beide varianten

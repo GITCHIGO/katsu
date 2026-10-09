@@ -41,6 +41,11 @@ Bouwsteen 1 was een ommekeer (tegenbeweging → sweep → CHoCH). Deze bouwsteen
 | **TP** | 2R vast | idem |
 
 - **Minimale SL:** 1 × ATR14 → anders overslaan (zelfde als v0.1).
+- **Kostenplafond (toegevoegd 9 okt 2026, na de controlegrafieken en vóór enig backtestresultaat):** sla een setup over als de verwachte kosten meer dan **0,2R** zijn.
+  - Verwachte kosten = spread (met minimum) + 2 × slippage (in en uit) + commissie, in prijs.
+  - R = afstand tussen geplande entry (marktorder: open + spread + slippage; limiet: de limietprijs) en de SL, bepaald met de spread op het signaalmoment. Alles is bekend vóór de order vertrekt, dus live werkt het identiek.
+  - Reden: in een rustige markt is de SL klein maar blijven de kosten gelijk (controlegrafiek #3: SL ≈ $3, kosten ≈ $0,78 ≈ 0,26R). Gitchi wil sowieso geen krappe SL.
+  - Overgeslagen setups worden gelogd met status `kosten_te_hoog`.
 - Geen break-even, geen trailing.
 
 ## 5. Varianten (8, niet meer)
@@ -67,3 +72,4 @@ Setup-timeframe M5 of M15 × entry A of B × swinglengte L = 1 of L = 3. Zelfde 
 ## 9. Beslissingen (9 okt 2026)
 1. **Variant B = marktorder** direct na de BOS (niet de FVG-retest). ✅
 2. **Retest-limiet geldig 12 candles** (1 uur op M5, 3 uur op M15). ✅
+3. **Kostenplafond 0,2R** (zie §4), vóór de backtest toegevoegd. ✅

@@ -121,3 +121,38 @@ def test_onbekende_bouwsteen_geeft_fout():
     md = MarketData("XAUUSD", _random_m1(days=3), Instrument("XAUUSD"))
     with pytest.raises(ValueError):
         md.setups("5min", 1, "fibonacci")
+
+
+def test_frictionless_houdt_dezelfde_setups_als_het_kostenplafond():
+    """Diagnose zonder kosten mag geen setups toevoegen die bij echte kosten weggevallen zouden zijn."""
+    m1 = _random_m1()
+    md = MarketData("XAUUSD", m1, Instrument("XAUUSD", slip=0.25))
+    echt = run_variant([md], "5min", "B", 1, block="bos")
+    zonder = run_variant([md], "5min", "B", 1, block="bos", frictionless=True)
+    weg = set(echt.loc[echt.status == "kosten_te_hoog", "signal_time"])
+    assert len(weg) > 0
+    assert weg.isdisjoint(set(zonder.signal_time))
+    g = zonder[zonder.status == "gesloten"]
+    assert (g.cost_r == 0).all()
+
+
+def test_placebo_geeft_trades_met_de_gevraagde_sl_grootte():
+    from katsu.backtest import placebo
+    md = MarketData("XAUUSD", _random_m1(), Instrument("XAUUSD"))
+    out = placebo(md, "5min", np.array([3.0]), n=50, frictionless=True)
+    g = out[out.status == "gesloten"]
+    assert len(g) > 10
+    assert set(g.direction) == {"LONG", "SHORT"}
+    # zonder kosten: SL = anker − 0,1 ATR buffer -> risk ≈ 3,1 ATR (entry = open volgende candle ≈ close)
+    b, a, _ = md.tf_bars("5min")
+    assert g.risk.median() > 2.0 * a.median()
+
+
+def test_stresstest_verandert_niet_welke_setups_genomen_worden():
+    """Het kostenplafond beslist op de basis-slippage; de stresstest maakt alleen de uitvoering slechter."""
+    md = MarketData("XAUUSD", _random_m1(), Instrument("XAUUSD", slip=0.25))
+    basis = run_variant([md], "5min", "B", 1, block="bos", slip={"XAUUSD": 0.25})
+    hoog = run_variant([md], "5min", "B", 1, block="bos", slip={"XAUUSD": 0.50})
+    weg_b = set(basis.loc[basis.status == "kosten_te_hoog", "signal_time"])
+    weg_h = set(hoog.loc[hoog.status == "kosten_te_hoog", "signal_time"])
+    assert len(weg_b) > 0 and weg_b == weg_h

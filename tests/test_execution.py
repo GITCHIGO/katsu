@@ -156,3 +156,33 @@ def test_vastgelegde_instellingen_per_markt():
     from katsu.execution import EURUSD, XAUUSD
     assert (XAUUSD.slip, XAUUSD.min_spread, XAUUSD.commission) == (0.25, 0.10, 0.08)
     assert (EURUSD.slip, EURUSD.min_spread) == (0.00003, 0.00001)
+
+
+# ---------------- Kostenplafond (spec v0.2 §4) ----------------
+# Verwachte kosten = spread 0,10 + 2 × slippage 0,01 + commissie 0,08 = 0,20 (in prijs).
+
+def test_kostenplafond_marktorder():
+    # geplande entry 100,11 · SL 97,80 · R = 2,31 · kosten 0,20 / 2,31 = 0,087R
+    d = m1([(100, 100.5, 99.8, 100.2), (100.2, 105.0, 100.0, 104.9)])
+    assert simulate(long_plan(max_cost_r=0.2), d, INS).status == "gesloten"
+    tr = simulate(long_plan(max_cost_r=0.05), d, INS)
+    assert tr.status == "kosten_te_hoog"
+    assert tr.cost_r == pytest.approx(0.20 / 2.31)
+
+
+def test_kostenplafond_limiet_gebruikt_de_limietprijs():
+    # limiet 99,50 · SL 97,80 · R = 1,70 · kosten 0,20 / 1,70 = 0,118R
+    d = m1([(100, 100.5, 99.8, 100.2), (100.2, 110.0, 99.3, 100.0), (100.0, 100.4, 99.9, 100.1)])
+    p = dict(kind="limit", limit_price=99.5, valid_until=T0 + pd.Timedelta(minutes=5))
+    ok = OrderPlan("LONG", T0, p["kind"], 98.0, 1.0, p["limit_price"], p["valid_until"], max_cost_r=0.2)
+    te = OrderPlan("LONG", T0, p["kind"], 98.0, 1.0, p["limit_price"], p["valid_until"], max_cost_r=0.1)
+    assert simulate(ok, d, INS).status == "gesloten"
+    tr = simulate(te, d, INS)
+    assert tr.status == "kosten_te_hoog" and tr.cost_r == pytest.approx(0.20 / 1.70)
+
+
+def test_overgeslagen_wegens_kosten_blokkeert_de_markt_niet():
+    d = m1([(100, 100.5, 99.8, 100.2), (100.2, 105.0, 100.0, 104.9)])
+    p = [long_plan(max_cost_r=0.01), OrderPlan("LONG", T0, "market", 98.0, 1.0)]
+    out = run_portfolio(p, {"XAUUSD": d}, {"XAUUSD": INS})
+    assert sorted(out.status) == ["gesloten", "kosten_te_hoog"]

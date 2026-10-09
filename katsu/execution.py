@@ -37,6 +37,9 @@ class Instrument:
     sl_atr_buffer: float = 0.1    # SL-buffer = spread + 0,1 × ATR
     min_sl_atr: float = 1.0       # minimale SL-afstand = 1 × ATR
     limit_valid_bars: int = 6     # variant B: geldigheid limietorder in setup-candles
+    cap_slip: float | None = None # slippage waarmee het kostenplafond rekent (None = slip).
+                                  # Bij een stresstest blijft de beslissing op de basis-slippage,
+                                  # alleen de uitvoering wordt slechter.
 
 
 # Vastgelegde instellingen per markt (spec §2 en §5).
@@ -55,13 +58,14 @@ class OrderPlan:
     limit_price: float | None = None
     valid_until: pd.Timestamp | None = None
     market: str = "XAUUSD"
+    max_cost_r: float | None = None   # kostenplafond (spec v0.2 §4); None = geen plafond
 
 
 @dataclass
 class Trade:
     direction: str
     signal_time: pd.Timestamp
-    status: str                     # "gesloten", "sl_te_klein", "niet_gevuld", "geen_data"
+    status: str                     # "gesloten", "sl_te_klein", "kosten_te_hoog", "niet_gevuld", "geen_data"
     entry_time: pd.Timestamp | None = None
     fill: float | None = None
     sl: float | None = None
@@ -91,6 +95,28 @@ def _round_tick(x: float, tick: float) -> float:
     return round(round(x / tick) * tick, 10)
 
 
+def planned_cost_r(plan: OrderPlan, d: M1, ins: Instrument, i: int | None = None):
+    """
+    Verwachte kosten in R op het moment dat de order vertrekt (spec v0.2 §4).
+    Kosten = spread (met minimum) + 2 × slippage + commissie.
+    R = geplande entry (markt: open + spread + slippage; limiet: limietprijs) tot de geplande SL.
+    Geeft (risk, kosten_in_R); kosten_in_R is None als de risk niet positief is.
+    """
+    if i is None:
+        i = int(d.t.searchsorted(plan.signal_time))
+    long = plan.direction == LONG
+    s = 1.0 if long else -1.0
+    sp0 = d.sp[i]
+    slip = ins.slip if ins.cap_slip is None else ins.cap_slip
+    if plan.kind == "market":
+        planned = d.o[i] + sp0 + slip if long else d.o[i] - slip
+    else:
+        planned = plan.limit_price
+    risk = s * (planned - (plan.anchor - s * (sp0 + ins.sl_atr_buffer * plan.atr)))
+    cost = sp0 + 2 * slip + ins.commission
+    return risk, (cost / risk if risk > 0 else None)
+
+
 def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     long = plan.direction == LONG
     s = 1.0 if long else -1.0
@@ -98,6 +124,12 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     i = int(d.t.searchsorted(plan.signal_time))      # eerste M1-candle die start op/na het signaal
     if i >= len(d.t):
         return Trade(plan.direction, plan.signal_time, "geen_data")
+
+    # ---- Kostenplafond: beslist vóór de order vertrekt, met wat dan bekend is ----
+    if plan.max_cost_r is not None:
+        risk_plan, cost_r = planned_cost_r(plan, d, ins, i)
+        if cost_r is None or cost_r > plan.max_cost_r:
+            return Trade(plan.direction, plan.signal_time, "kosten_te_hoog", risk=risk_plan, cost_r=cost_r)
 
     # ---- Entry ----
     tp_from_same_bar = True

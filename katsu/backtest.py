@@ -20,7 +20,8 @@ import pandas as pd
 
 from katsu.bos import detect_bos, make_bos_plan
 from katsu.data import resample
-from katsu.execution import M1, Instrument, entry_level_variant_b, make_plan, run_portfolio
+from katsu.execution import (M1, Instrument, OrderPlan, entry_level_variant_b, make_plan,
+                             planned_cost_r, run_portfolio)
 from katsu.signals import LONG, Setup, detect_setups, h1_trend_lookup, multi_tf_trend
 from katsu.structure import atr
 
@@ -153,20 +154,35 @@ class MarketData:
 
 def run_variant(markets: list[MarketData], tf: str, variant: str, L: int,
                 slip: dict | None = None, day_stop_r: float = -2.0,
-                block: str = "sweep") -> pd.DataFrame:
+                block: str = "sweep", frictionless: bool = False) -> pd.DataFrame:
     """
     Speelt één variant af over alle markten samen. `slip` = {markt: slippage in prijs}
     (zonder: de basis uit het Instrument). Geeft één rij per setup: context + uitkomst.
+
+    frictionless=True is een DIAGNOSE (spec v0.2 §6): dezelfde setups die het kostenplafond bij
+    basiskosten halen, maar afgespeeld zonder spread, slippage en commissie. Zo zie je of er
+    vóór kosten een voorsprong is. Nooit een kiesbare variant.
     """
     plans, ctx_rows, data, inss = [], {}, {}, {}
     for md in markets:
-        ins = replace(md.ins, slip=slip[md.name]) if slip else md.ins
-        inss[md.name] = ins
-        data[md.name] = M1(md.m1, ins)
+        # stresstest: slechtere uitvoering, maar het kostenplafond beslist op de basis-slippage
+        ins = replace(md.ins, slip=slip[md.name], cap_slip=md.ins.slip) if slip else md.ins
+        d = M1(md.m1, ins)
+        if frictionless:
+            ins_run = replace(ins, point=0.0, min_spread=0.0, slip=0.0, commission=0.0)
+            inss[md.name], data[md.name] = ins_run, M1(md.m1, ins_run)
+        else:
+            inss[md.name], data[md.name] = ins, d
         b, a, pct = md.tf_bars(tf)
         for s in md.setups(tf, L, block):
             if block == "bos":
-                plans.append(make_bos_plan(s, tf, a, variant, ins))
+                p = make_bos_plan(s, tf, a, variant, ins)
+                if frictionless and p.max_cost_r is not None:
+                    _, cr = planned_cost_r(p, d, ins)
+                    if cr is None or cr > p.max_cost_r:
+                        continue                       # zou bij echte kosten overgeslagen zijn
+                    p = replace(p, max_cost_r=None)
+                plans.append(p)
                 ctx = bos_context(s, b, a, pct, md.ctx_trend(s.signal_time))
             else:
                 plans.append(make_plan(s, b, tf, a, variant, ins))
@@ -201,3 +217,34 @@ IN_SAMPLE_END = pd.Timestamp("2025-01-01")   # spec §8: alles hiervoor = in-sam
 def in_sample(m1: pd.DataFrame) -> pd.DataFrame:
     """Snijdt de out-of-sample periode weg (servertijd < 1 jan 2025)."""
     return m1[m1.index < IN_SAMPLE_END]
+
+
+# ---------------- Placebo (spec v0.2 §6) ----------------
+
+def placebo(md: MarketData, tf: str, risk_atr: np.ndarray, n: int = 3000, seed: int = 1,
+            max_cost_r: float | None = None, frictionless: bool = False) -> pd.DataFrame:
+    """
+    Willekeurige instapmomenten (01–21u BE) en richting, met een SL-afstand getrokken uit
+    `risk_atr` (de echte SL-groottes van de variant, in ATR), marktorder, TP 2R, zelfde motor.
+    Zonder dagstop (elke placebo-trade telt). Dient als maatstaf: een echte edge moet hier
+    duidelijk boven zitten.
+    """
+    rng = np.random.default_rng(seed)
+    ins = md.ins
+    if frictionless:
+        ins = replace(ins, point=0.0, min_spread=0.0, slip=0.0, commission=0.0)
+    b, a, _ = md.tf_bars(tf)
+    hrs = (b.index - pd.Timedelta(hours=SERVER_OFFSET_H)).hour
+    ok = np.where(a.notna().to_numpy() & (hrs >= 1) & (hrs < 21))[0]
+    pick = np.sort(rng.choice(ok, min(n, len(ok)), replace=False))
+    plans = []
+    for k in pick:
+        t = b.index[k] + pd.Timedelta(tf)
+        at = float(a.iloc[k]); px = float(b["close"].iloc[k])
+        dist = float(rng.choice(risk_atr)) * at
+        long = rng.random() < 0.5
+        plans.append(OrderPlan(LONG if long else "SHORT", t, "market",
+                               px - dist if long else px + dist, at, market=md.name,
+                               max_cost_r=max_cost_r))
+    return run_portfolio(plans, {md.name: M1(md.m1, ins)}, {md.name: ins}, day_stop_r=-1e9,
+                         server_offset_h=SERVER_OFFSET_H)

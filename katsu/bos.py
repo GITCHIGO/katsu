@@ -26,6 +26,7 @@ from katsu.signals import LONG, SHORT
 from katsu.structure import DOWN, UP, Swing, find_swings
 
 RETEST_VALID_BARS = 12   # spec v0.2 §4: retest-limiet 12 candles geldig
+MAX_COST_R = 0.2         # spec v0.2 §4: setup overslaan als de verwachte kosten > 0,2R
 
 
 @dataclass(frozen=True)
@@ -93,11 +94,13 @@ def make_bos_plan(setup: BosSetup, tf: str, atr_series: pd.Series, variant: str,
     """
     Variant A: limiet op het gebroken niveau, 12 candles geldig.
     Variant B: marktorder op de open van de candle na de BOS.
-    SL-basis (anchor) is in beide gevallen de HL; buffer en minimum-SL doet execution.simulate.
+    SL-basis (anchor) is in beide gevallen de HL; buffer, minimum-SL en kostenplafond (0,2R)
+    doet execution.simulate.
     """
     atr = float(atr_series.iloc[setup.bos_index])
     if variant == "A":
         valid = setup.signal_time + RETEST_VALID_BARS * pd.Timedelta(tf)
         return OrderPlan(setup.direction, setup.signal_time, "limit", setup.hl_price, atr,
-                         setup.level, valid, market=ins.name)
-    return OrderPlan(setup.direction, setup.signal_time, "market", setup.hl_price, atr, market=ins.name)
+                         setup.level, valid, market=ins.name, max_cost_r=MAX_COST_R)
+    return OrderPlan(setup.direction, setup.signal_time, "market", setup.hl_price, atr, market=ins.name,
+                     max_cost_r=MAX_COST_R)
