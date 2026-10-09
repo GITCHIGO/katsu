@@ -28,9 +28,13 @@ Wens van Gitchi (9 okt 2026): een bullish FVG alleen nemen als de hogere timefra
 **Bullish FVG:** drie opeenvolgende gesloten candles op de setup-timeframe (M5 of M15) waarbij de **low van candle 3 hoger ligt dan de high van candle 1**. De gap loopt van high candle 1 (onderkant) tot low candle 3 (bovenkant).
 - Het signaal bestaat pas op het einde van candle 3.
 
-**Trendfilter (variant, zie §6):**
-- T1: H1 **en** H4 allebei UP.
-- T2: H1, H4 **en** D1 alle drie UP.
+**Trendfilter (variant, zie §6) — afgestemd op hoe lang de trade loopt:**
+- Onze trades zijn intraday (snelle FVG's, uiterlijk dicht om 23:00 BE). Daarom kijkt de filter naar de timeframes **net boven** de setup, niet naar D1 (opmerking Gitchi 9 okt 2026: H4/D1 horen bij grote FVG's die je lang aanhoudt).
+- **T0 (basis):** alleen H1 UP, zoals in bouwsteen 1 en 2.
+- **T+ (afgestemd):** de twee timeframes direct boven de setup allebei UP.
+  - M5-setup: **M15 en H1** UP.
+  - M15-setup: **H1 en H4** UP.
+- D1 is geen filter; hij wordt wel gelogd.
 - Gemeten op het einde van candle 3, met alleen candles die dan gesloten zijn. Anders geen setup.
 
 **Elke FVG geeft maar één order.**
@@ -48,11 +52,13 @@ Wens van Gitchi (9 okt 2026): een bullish FVG alleen nemen als de hogere timefra
 - Geen break-even, geen trailing.
 
 ## 6. Varianten (8, niet meer)
-Setup-timeframe **M5 of M15** × entry **A of B** × trendfilter **T1 of T2**.
-(De swinglengte L speelt hier geen rol: een FVG heeft geen swings nodig. Die plek gaat naar de trendfilter, zodat we Gitchi's idee rechtstreeks meten.)
+Setup-timeframe **M5 of M15** × entry **A of B** × trendfilter **T0 of T+**.
+(De swinglengte L speelt hier geen rol: een FVG heeft geen swings nodig. Die plek gaat naar de trendfilter, zodat we rechtstreeks meten of de extra timeframe iets toevoegt bovenop H1.)
 
-Verwachte aantallen 2020–2024 (geteld vóór de retest, de 1-positie-regel en het kostenplafond, met SL ≥ 1 ATR):
-goud M5 T1 ~990/jaar, M5 T2 ~280, M15 T1 ~290, M15 T2 ~80; EURUSD vergelijkbaar. M15-T2 kan krap worden voor het minimum van 100 trades.
+Verwachte aantallen 2020–2024 (geteld vóór de retest, de 1-positie-regel en het kostenplafond, met SL ≥ 1 ATR), per jaar:
+- goud M5: T0 ~3.100, T+ ~910 · goud M15: T+ ~290
+- EURUSD M5: T0 ~3.440, T+ ~1.010 · EURUSD M15: T+ ~340
+Omdat er maar 1 positie per markt tegelijk mag lopen, wordt maar een deel daarvan echt getradeerd.
 
 ## 7. Testplan
 Identiek aan v0.2 §6: alleen 2020–2024, dezelfde keuzeregel en succescriteria, 2025–2026 blijft dicht.
@@ -61,6 +67,7 @@ Identiek aan v0.2 §6: alleen 2020–2024, dezelfde keuzeregel en succescriteria
 - Geen combinatie met sweep of BOS (die faalden apart; combineren mag pas met bouwstenen die apart slagen).
 - Geen minimumgrootte voor de FVG buiten de minimale SL en het kostenplafond.
 - Geen hogere timeframe als setup (H1/H4) in deze bouwsteen. Dat idee staat genoteerd voor later (beslissing Gitchi: eerst alle bouwstenen testen, daarna kijken hoe verder).
+  - Genoteerd idee: **grote FVG's op een hogere timeframe die meerdere dagen open blijven, met H4/D1 mee als filter.** Pas als eigen spec, na de bouwstenen.
 
 ## 9. Bronnen
 - FVG (3-candle imbalance), consequent encroachment = 50% van de gap: theinnercircletraders.com (ICT fair value gap)
