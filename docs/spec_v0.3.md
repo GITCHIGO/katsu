@@ -12,7 +12,8 @@ Wens van Gitchi (9 okt 2026): een bullish FVG alleen nemen als de hogere timefra
 
 ## 2. Wat gelijk blijft aan v0.1/v0.2 (niet opnieuw te beslissen)
 - Goud en EURUSD, exact dezelfde regels, criteria per markt.
-- Data, uitvoering, kosten, slippage-plan, M1-controle, SL bij twijfel, TP als limiet, einde handelsdag 23:00 BE.
+- Data, uitvoering, kosten, slippage-plan, M1-controle, SL bij twijfel, TP als limiet.
+- **Wijziging 9 okt 2026 (beslissing Gitchi, geldt voor alle bouwstenen):** trades lopen tot SL of TP, ook over nacht en weekend; geen sluiting meer om 23:00 BE. Kosten die daarbij horen: swap per nacht (voorlopig, bewust ongunstig: goud $0,40/oz ≈ $40/lot, EURUSD 0,7 pip ≈ $7/lot per nacht, in beide richtingen als kost; vrijdag→maandag = 3 nachten) tot de echte MT5-waarden binnen zijn; verbrede spread rond de rollover (23:55–01:30 server: 2 × de data, minimum goud $0,50 / EURUSD 0,5 pip); gaps vullen de SL op de open. Dagstop telt voortaan alleen gesloten trades, op de dag van de exit.
 - 1% risico, alles in R, max 1 positie (of lopende order) per markt, dagstop −2R over beide markten samen.
 - **Minimale SL 1 × ATR14 en kostenplafond 0,2R** (v0.2 §4). Krappe SL's worden overgeslagen.
 - Trenddefinitie: laatste twee bevestigde swing highs én lows stijgend = UP, dalend = DOWN, anders NEUTRAL; L = 3; alleen gesloten candles.
@@ -29,7 +30,7 @@ Wens van Gitchi (9 okt 2026): een bullish FVG alleen nemen als de hogere timefra
 - Het signaal bestaat pas op het einde van candle 3.
 
 **Trendfilter (variant, zie §6) — afgestemd op hoe lang de trade loopt:**
-- Onze trades zijn intraday (snelle FVG's, uiterlijk dicht om 23:00 BE). Daarom kijkt de filter naar de timeframes **net boven** de setup, niet naar D1 (opmerking Gitchi 9 okt 2026: H4/D1 horen bij grote FVG's die je lang aanhoudt).
+- De setups zijn snelle FVG's op M5/M15. Daarom kijkt de filter naar de timeframes **net boven** de setup, niet naar D1 (opmerking Gitchi 9 okt 2026: H4/D1 horen bij grote FVG's die je lang aanhoudt).
 - **T0 (basis):** alleen H1 UP, zoals in bouwsteen 1 en 2.
 - **T+ (afgestemd):** de twee timeframes direct boven de setup allebei UP.
   - M5-setup: **M15 en H1** UP.

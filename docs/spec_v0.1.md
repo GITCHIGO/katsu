@@ -76,7 +76,8 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 | **TP** | 2R vast | idem |
 
 - **Minimale SL:** 1 × ATR14 M5 (anders te krap voor spread/ruis) → setup overslaan.
-- **Maximale looptijd:** tot einde handelsdag (23:00 BE), dan sluiten op markt.
+- ~~**Maximale looptijd:** tot einde handelsdag (23:00 BE), dan sluiten op markt.~~ Vervangen, zie hieronder.
+- **Wijziging 9 okt 2026 (beslissing Gitchi, geldt voor alle bouwstenen):** trades lopen tot SL of TP, ook over nacht en weekend; geen sluiting meer om 23:00 BE. Kosten die daarbij horen: swap per nacht (voorlopig, bewust ongunstig: goud $0,40/oz ≈ $40/lot, EURUSD 0,7 pip ≈ $7/lot per nacht, in beide richtingen als kost; vrijdag→maandag = 3 nachten) tot de echte MT5-waarden binnen zijn; verbrede spread rond de rollover (23:55–01:30 server: 2 × de data, minimum goud $0,50 / EURUSD 0,5 pip); gaps vullen de SL op de open. Dagstop telt voortaan alleen gesloten trades, op de dag van de exit.
 - Geen break-even en geen trailing in v0.1 (één ding tegelijk testen).
 
 ## 5. Uitvoering in de backtest (de fouten van GAMAN-X, nooit meer)

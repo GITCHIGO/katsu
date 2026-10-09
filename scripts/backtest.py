@@ -5,7 +5,7 @@ Stap 4: backtest op de in-sample periode (2020–2024), spec §8.
 (1 positie per markt, gezamenlijke dagstop −2R).
 De out-of-sample periode (vanaf 1 jan 2025) wordt weggesneden VÓÓR er iets berekend wordt.
 
-Gebruik: python -m scripts.backtest <xau_m1.pkl> <eur_m1.pkl> <uitmap> [sweep|bos]
+Gebruik: python -m scripts.backtest <xau_m1.pkl> <eur_m1.pkl> <uitmap> [sweep|bos] [label]
 Schrijft: <uitmap>/trades_insample.pkl (bouwsteen 1) of trades_insample_bos.pkl (bouwsteen 2),
 plus voor bos: diagnose_bos.pkl (zonder kosten + placebo, spec v0.2 §6).
 """
@@ -26,7 +26,7 @@ SLIPPAGE = {  # spec §5: stress laag / basis / stress hoog
 VARIANTS = [(tf, v, L) for tf in ("5min", "15min") for v in ("A", "B") for L in (1, 3)]
 
 
-def main(xau_path, eur_path, outdir, block="sweep"):
+def main(xau_path, eur_path, outdir, block="sweep", tag=""):
     os.makedirs(outdir, exist_ok=True)
     markets = []
     for name, path, ins in (("XAUUSD", xau_path, XAUUSD), ("EURUSD", eur_path, EURUSD)):
@@ -45,18 +45,17 @@ def main(xau_path, eur_path, outdir, block="sweep"):
                   + "  ".join(f"{r.market} n={r.trades} gem={r.gem_r:+.3f}" for r in s.itertuples())
                   + f"  ({time.time() - t0:.0f}s)", flush=True)
     trades = pd.concat(allt, ignore_index=True)
-    name = "trades_insample.pkl" if block == "sweep" else f"trades_insample_{block}.pkl"
+    name = ("trades_insample" if block == "sweep" else f"trades_insample_{block}") + tag + ".pkl"
     trades.to_pickle(os.path.join(outdir, name))
     print("klaar:", len(trades), "rijen")
-    if block == "bos":
-        diagnose(markets, trades, outdir)
+    diagnose(markets, trades, outdir, block, tag)
 
 
-def diagnose(markets, trades, outdir):
+def diagnose(markets, trades, outdir, block, tag=""):
     """Spec v0.2 §6: per variant dezelfde setups zonder kosten, en een placebo met dezelfde SL-groottes."""
     rows = []
     for tf, v, L in VARIANTS:
-        fr = run_variant(markets, tf, v, L, block="bos", frictionless=True)
+        fr = run_variant(markets, tf, v, L, block=block, frictionless=True)
         name = fr.variant.iloc[0]
         for r in summary(fr, ["market"]).itertuples():
             rows.append({"variant": name, "market": r.market, "soort": "zonder kosten",
@@ -67,14 +66,15 @@ def diagnose(markets, trades, outdir):
             if len(g) < 20:
                 continue
             risk_atr = (g.risk / g.atr).to_numpy()
-            for soort, fric, cap in (("placebo met kosten", False, 0.2), ("placebo zonder kosten", True, None)):
+            cap0 = 0.2 if block == "bos" else None          # kostenplafond hoort bij spec v0.2+
+            for soort, fric, cap in (("placebo met kosten", False, cap0), ("placebo zonder kosten", True, None)):
                 pl = placebo(md, tf, risk_atr, n=3000, seed=7, max_cost_r=cap, frictionless=fric)
                 m = metrics(pl[pl.status == "gesloten"].sort_values("entry_time").r_net)
                 rows.append({"variant": name, "market": md.name, "soort": soort,
                              "trades": m["trades"], "gem_r": m["gem_r"], "winrate": m["winrate"]})
         print("diagnose", name, flush=True)
-    pd.DataFrame(rows).to_pickle(os.path.join(outdir, "diagnose_bos.pkl"))
+    pd.DataFrame(rows).to_pickle(os.path.join(outdir, f"diagnose_{block}{tag}.pkl"))
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:5])
+    main(*sys.argv[1:6])

@@ -74,11 +74,14 @@ def test_short_gebruikt_ask_voor_tp():
     assert tr.r_gross == pytest.approx(2.0)
 
 
-def test_einde_dag_sluit_op_laatste_candle_voor_middernacht():
+def test_oude_regel_einde_dag_sluit_op_laatste_candle_voor_middernacht():
+    # Oud gedrag (spec v0.1/v0.2 vóór 9 okt 2026), alleen nog beschikbaar met close_eod=True.
+    from dataclasses import replace
+    eod = replace(INS, close_eod=True)
     start = pd.Timestamp("2025-01-06 23:58")
     plan = OrderPlan("LONG", start, "market", 98.0, 1.0)
     d = m1([(100, 100.3, 99.9, 100.1), (100.1, 100.4, 100.0, 100.3), (100.3, 110, 100.2, 109)], start)
-    tr = simulate(plan, d, INS)
+    tr = simulate(plan, d, eod)
     # candle van 00:00 (die de TP zou raken) hoort bij de volgende dag en wordt niet gebruikt
     assert tr.exit_reason == "EINDE_DAG"
     assert tr.exit_time == pd.Timestamp("2025-01-06 23:59")
@@ -106,7 +109,7 @@ def test_limiet_gevuld_op_limietprijs_en_geen_tp_op_vulcandle():
     # SL = 97,80 (spread 0,10 + 0,1 ATR) · risk = 99,50 − 97,80 = 1,70 · TP = 102,90
     assert (tr.fill, tr.sl, tr.tp) == (99.5, 97.80, 102.90)
     assert tr.entry_time == T0 + pd.Timedelta(minutes=1)
-    assert tr.exit_reason == "EINDE_DAG"
+    assert tr.exit_reason == "EINDE_DATA"          # geen SL/TP geraakt vóór het einde van de data
 
 
 def test_portefeuille_een_positie_en_dagstop():
@@ -186,3 +189,73 @@ def test_overgeslagen_wegens_kosten_blokkeert_de_markt_niet():
     p = [long_plan(max_cost_r=0.01), OrderPlan("LONG", T0, "market", 98.0, 1.0)]
     out = run_portfolio(p, {"XAUUSD": d}, {"XAUUSD": INS})
     assert sorted(out.status) == ["gesloten", "kosten_te_hoog"]
+
+
+# ---------------- Looptijd tot SL/TP, swap, rollover (gewijzigd 9 okt 2026) ----------------
+
+def test_trade_loopt_over_middernacht_tot_tp_met_swap():
+    """
+    LONG zoals de basis (fill 100,11 · SL 97,80 · risk 2,31 · TP 104,73), maar de TP valt pas
+    de volgende dag. Swap 0,05 per nacht, 1 nacht:
+      r_net = 2 − (0,08 + 0,05) / 2,31
+    """
+    from dataclasses import replace
+    ins = replace(INS, swap=0.05)
+    start = pd.Timestamp("2025-01-06 23:58")
+    plan = OrderPlan("LONG", start, "market", 98.0, 1.0)
+    d = M1(pd.DataFrame({"open": [100, 100.1, 100.3], "high": [100.3, 100.4, 105.0],
+                         "low": [99.9, 100.0, 100.2], "close": [100.1, 100.3, 104.9], "spread": 5},
+                        index=pd.to_datetime(["2025-01-06 23:58", "2025-01-06 23:59", "2025-01-07 01:00"])),
+           ins)
+    tr = simulate(plan, d, ins)
+    assert tr.exit_reason == "TP" and tr.exit_time == pd.Timestamp("2025-01-07 01:00")
+    assert tr.nights == 1
+    assert tr.swap_r == pytest.approx(0.05 / 2.31)
+    assert tr.r_net == pytest.approx(2.0 - (0.08 + 0.05) / 2.31)
+
+
+def test_weekend_telt_als_drie_nachten_en_gap_vult_op_open():
+    from dataclasses import replace
+    ins = replace(INS, swap=0.05)
+    fri = pd.Timestamp("2025-01-10 22:00")                       # vrijdag
+    idx = pd.to_datetime(["2025-01-10 22:00", "2025-01-10 22:01", "2025-01-13 01:00"])   # maandag
+    d = M1(pd.DataFrame({"open": [100, 100.1, 97.0], "high": [100.3, 100.4, 97.2],
+                         "low": [99.9, 100.0, 96.9], "close": [100.1, 100.3, 97.1], "spread": 5},
+                        index=idx), ins)
+    tr = simulate(OrderPlan("LONG", fri, "market", 98.0, 1.0), d, ins)
+    assert tr.nights == 3
+    assert tr.exit_reason == "SL" and tr.exit_price == pytest.approx(96.99)   # gap: open 97,00 − 1 tick
+
+
+def test_lange_trade_over_meerdere_zoekstappen():
+    # Meer dan CHUNK candles vlak, daarna pas de TP: de zoektocht in stukken mag niets missen.
+    from katsu.execution import CHUNK
+    n = CHUNK + 500
+    rows = [(100, 100.5, 99.8, 100.2)] + [(100.2, 100.3, 100.1, 100.2)] * n + [(100.2, 105.0, 100.1, 104.9)]
+    tr = simulate(long_plan(), m1(rows), INS)
+    assert tr.exit_reason == "TP" and tr.exit_time == T0 + pd.Timedelta(minutes=n + 1)
+
+
+def test_rollover_verbreedt_de_spread():
+    from dataclasses import replace
+    ins = replace(INS, rollover_min_spread=0.50)
+    idx = pd.to_datetime(["2025-01-06 10:00", "2025-01-06 23:56", "2025-01-07 00:30", "2025-01-07 01:30"])
+    d = M1(pd.DataFrame({"open": 100.0, "high": 100.0, "low": 100.0, "close": 100.0,
+                         "spread": [5, 5, 30, 5]}, index=idx), ins)
+    # 10:00 normaal 0,10 · 23:56 max(2×0,10; 0,50) = 0,50 · 00:30 max(2×0,30; 0,50) = 0,60 · 01:30 weer normaal
+    assert list(d.sp) == pytest.approx([0.10, 0.50, 0.60, 0.10])
+
+
+def test_dagstop_telt_alleen_gesloten_trades():
+    """
+    Goud verliest om 10:01 (SL). EURUSD-signaal om 10:00:30 komt VÓÓR die exit: mag nog.
+    EURUSD-signaal om 10:05 komt erna: dag staat op ≈ −1R, onder de dagstop van −0,5R -> geblokkeerd.
+    """
+    rows = [(100, 100.5, 99.8, 100.2), (100.2, 100.5, 97.5, 98.0)] + [(100, 100.2, 99.9, 100)] * 10
+    g, e = m1(rows), m1(rows)
+    p = [OrderPlan("LONG", T0, "market", 98.0, 1.0, market="XAUUSD"),
+         OrderPlan("LONG", T0 + pd.Timedelta(seconds=30), "market", 90.0, 1.0, market="EURUSD"),
+         OrderPlan("LONG", T0 + pd.Timedelta(minutes=5), "market", 90.0, 1.0, market="XAUUSD")]
+    out = run_portfolio(p, {"XAUUSD": g, "EURUSD": e}, {"XAUUSD": INS, "EURUSD": INS}, day_stop_r=-0.5)
+    assert list(zip(out.market, out.status)) == [("XAUUSD", "gesloten"), ("EURUSD", "gesloten"),
+                                                  ("XAUUSD", "dagstop")]

@@ -13,7 +13,8 @@ Bouwsteen 1 was een ommekeer (tegenbeweging → sweep → CHoCH). Deze bouwsteen
 ## 2. Wat gelijk blijft aan v0.1 (niet opnieuw te beslissen)
 - Markten: **goud en EURUSD, exact dezelfde regels**, criteria per markt (v0.1 §2).
 - Data, uitvoering, kosten en slippage-plan (v0.1 §2 en §5): M1-controle, SL bij twijfel, gap-regel, TP als limiet, basis-slippage $0,25 / 0,3 pip met stresstest.
-- Risico (v0.1 §6): 1% per trade, alles in R, max 1 positie per markt, dagstop −2R over beide markten samen, einde handelsdag 23:00 BE.
+- Risico (v0.1 §6): 1% per trade, alles in R, max 1 positie per markt, dagstop −2R over beide markten samen.
+- **Wijziging 9 okt 2026 (beslissing Gitchi, geldt voor alle bouwstenen):** trades lopen tot SL of TP, ook over nacht en weekend; geen sluiting meer om 23:00 BE. Kosten die daarbij horen: swap per nacht (voorlopig, bewust ongunstig: goud $0,40/oz ≈ $40/lot, EURUSD 0,7 pip ≈ $7/lot per nacht, in beide richtingen als kost; vrijdag→maandag = 3 nachten) tot de echte MT5-waarden binnen zijn; verbrede spread rond de rollover (23:55–01:30 server: 2 × de data, minimum goud $0,50 / EURUSD 0,5 pip); gaps vullen de SL op de open. Dagstop telt voortaan alleen gesloten trades, op de dag van de exit.
 - Swing-definitie (strikt, L candles links en rechts, pas bevestigd na sluiting) en **H1-trend met L = 3** als richtingsfilter.
 - Logging (v0.1 §7): uur, dag, sessie, ATR-percentiel, trend M15/H1/H4/D1, enz. Alleen meten, geen filter.
 

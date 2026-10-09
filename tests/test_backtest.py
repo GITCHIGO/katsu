@@ -126,14 +126,14 @@ def test_onbekende_bouwsteen_geeft_fout():
 def test_frictionless_houdt_dezelfde_setups_als_het_kostenplafond():
     """Diagnose zonder kosten mag geen setups toevoegen die bij echte kosten weggevallen zouden zijn."""
     m1 = _random_m1()
-    md = MarketData("XAUUSD", m1, Instrument("XAUUSD", slip=0.25))
+    md = MarketData("XAUUSD", m1, Instrument("XAUUSD", slip=0.25, swap=0.4, rollover_min_spread=0.5))
     echt = run_variant([md], "5min", "B", 1, block="bos")
     zonder = run_variant([md], "5min", "B", 1, block="bos", frictionless=True)
     weg = set(echt.loc[echt.status == "kosten_te_hoog", "signal_time"])
     assert len(weg) > 0
     assert weg.isdisjoint(set(zonder.signal_time))
     g = zonder[zonder.status == "gesloten"]
-    assert (g.cost_r == 0).all()
+    assert (g.cost_r == 0).all()            # geen commissie en geen swap
 
 
 def test_placebo_geeft_trades_met_de_gevraagde_sl_grootte():
@@ -149,10 +149,19 @@ def test_placebo_geeft_trades_met_de_gevraagde_sl_grootte():
 
 
 def test_stresstest_verandert_niet_welke_setups_genomen_worden():
-    """Het kostenplafond beslist op de basis-slippage; de stresstest maakt alleen de uitvoering slechter."""
-    md = MarketData("XAUUSD", _random_m1(), Instrument("XAUUSD", slip=0.25))
-    basis = run_variant([md], "5min", "B", 1, block="bos", slip={"XAUUSD": 0.25})
-    hoog = run_variant([md], "5min", "B", 1, block="bos", slip={"XAUUSD": 0.50})
-    weg_b = set(basis.loc[basis.status == "kosten_te_hoog", "signal_time"])
-    weg_h = set(hoog.loc[hoog.status == "kosten_te_hoog", "signal_time"])
-    assert len(weg_b) > 0 and weg_b == weg_h
+    """Het kostenplafond beslist op de basis-slippage; de stresstest maakt alleen de uitvoering slechter.
+    (Per setup gecontroleerd: welke setups later 'positie_open' zijn, mag wel verschillen,
+    want exits liggen bij meer slippage anders.)"""
+    from dataclasses import replace
+    from katsu.bos import detect_bos, make_bos_plan
+    from katsu.execution import planned_cost_r
+    m1 = _random_m1()
+    basis = Instrument("XAUUSD", slip=0.25)
+    stress = replace(basis, slip=0.50, cap_slip=0.25)
+    md = MarketData("XAUUSD", m1, basis)
+    b, a, _ = md.tf_bars("5min")
+    plans = [make_bos_plan(s, "5min", a, "B", basis) for s in detect_bos(b, "5min", md.h1_trend, L=1)]
+    db, ds = M1(m1, basis), M1(m1, stress)
+    weg_b = [planned_cost_r(p, db, basis)[1] > 0.2 for p in plans]
+    weg_s = [planned_cost_r(p, ds, stress)[1] > 0.2 for p in plans]
+    assert any(weg_b) and weg_b == weg_s

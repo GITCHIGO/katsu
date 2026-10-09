@@ -13,7 +13,11 @@ Conservatieve regels (geen gunstige aannames):
 - TP is een limietorder: gevuld exact op de TP, nooit beter.
 - Bij een limiet-entry (variant B) wordt op de vulcandle alleen de SL gecontroleerd,
   niet de TP (we weten niet of de high vóór of na de vulling kwam).
-- Einde handelsdag = 00:00 servertijd (= 23:00 Brussel). Dan sluiten op de close van de laatste M1-candle.
+- Looptijd (gewijzigd 9 okt 2026): een trade loopt tot SL of TP, ook over nacht en weekend.
+  Per nacht (elke servermiddernacht; vrijdag -> maandag = 3 nachten) wordt swap aangerekend.
+  Gaps over nacht of weekend vullen de SL op de open (zie hierboven).
+  Rond de rollover (23:55–01:30 server) wordt de spread verbreed (MT5 bewaart alleen de laagste).
+  Oud gedrag (sluiten om 00:00 server = 23:00 Brussel) blijft beschikbaar met close_eod=True.
 """
 from __future__ import annotations
 
@@ -40,12 +44,21 @@ class Instrument:
     cap_slip: float | None = None # slippage waarmee het kostenplafond rekent (None = slip).
                                   # Bij een stresstest blijft de beslissing op de basis-slippage,
                                   # alleen de uitvoering wordt slechter.
+    swap: float = 0.0             # swapkost per eenheid per nacht, in prijs (altijd als kost geteld)
+    rollover_min_spread: float = 0.0  # spread tijdens rollover = max(2 × data, dit); 0 = uit
+    close_eod: bool = False       # True = oud gedrag: sluiten om 00:00 server (23:00 BE)
 
 
 # Vastgelegde instellingen per markt (spec §2 en §5).
-XAUUSD = Instrument("XAUUSD", tick=0.01, point=0.01, min_spread=0.10, slip=0.25, commission=0.08)
+# Swap: VOORLOPIG en bewust ongunstig (beide richtingen als kost) tot de echte MT5-waarden binnen zijn.
+XAUUSD = Instrument("XAUUSD", tick=0.01, point=0.01, min_spread=0.10, slip=0.25, commission=0.08,
+                    swap=0.40, rollover_min_spread=0.50)          # $40/lot/nacht · rollover min $0,50
 EURUSD = Instrument("EURUSD", tick=0.00001, point=0.00001, min_spread=0.00001, slip=0.00003,
-                    commission=0.00008)   # €7/lot ≈ $8 per 100.000 = 0,8 pip
+                    commission=0.00008,                            # €7/lot ≈ $8 per 100.000 = 0,8 pip
+                    swap=0.00007, rollover_min_spread=0.00005)     # $7/lot/nacht · rollover min 0,5 pip
+
+ROLLOVER_START, ROLLOVER_END = 23 * 60 + 55, 90   # servertijd in minuten: 23:55 tot 01:30
+CHUNK = 2880                                      # aantal M1-candles per zoekstap (2 dagen)
 
 
 @dataclass(frozen=True)
@@ -73,10 +86,12 @@ class Trade:
     risk: float | None = None
     exit_time: pd.Timestamp | None = None
     exit_price: float | None = None
-    exit_reason: str | None = None  # "TP", "SL", "EINDE_DAG"
+    exit_reason: str | None = None  # "TP", "SL", "EINDE_DATA" (of "EINDE_DAG" met close_eod)
     r_gross: float | None = None
     cost_r: float | None = None
     r_net: float | None = None
+    nights: int | None = None       # aantal servermiddernachten dat de trade openstond
+    swap_r: float | None = None     # swapkost in R (zit ook in cost_r)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -89,6 +104,11 @@ class M1:
         self.o = m1["open"].to_numpy(float); self.h = m1["high"].to_numpy(float)
         self.lo = m1["low"].to_numpy(float); self.c = m1["close"].to_numpy(float)
         self.sp = np.maximum(m1["spread"].to_numpy(float) * ins.point, ins.min_spread)
+        if ins.rollover_min_spread > 0:
+            mins = self.t.hour * 60 + self.t.minute
+            win = np.asarray((mins >= ROLLOVER_START) | (mins < ROLLOVER_END))
+            self.sp[win] = np.maximum(2 * self.sp[win], ins.rollover_min_spread)
+        self.day = self.t.values.astype("datetime64[D]").astype(np.int64)   # serverdatum als getal
 
 
 def _round_tick(x: float, tick: float) -> float:
@@ -159,33 +179,46 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     tp = _round_tick(fill + s * ins.rr * risk, ins.tick)
 
     # ---- Beheer tot exit ----
-    day_end = (d.t[fi] + pd.Timedelta(days=1)).normalize()   # 00:00 servertijd volgende dag
-    k = fi
+    if ins.close_eod:
+        day_end = (d.t[fi] + pd.Timedelta(days=1)).normalize()    # 00:00 servertijd volgende dag
+        end = int(d.t.searchsorted(day_end))
+    else:
+        end = len(d.t)
+    k = None
     exit_price = reason = None
-    while k < len(d.t) and d.t[k] < day_end:
-        sp = d.sp[k]
+    for a in range(fi, end, CHUNK):
+        b = min(a + CHUNK, end)
+        sp = d.sp[a:b]
         if long:
-            adv_o, adv, fav = d.o[k], d.lo[k], d.h[k]                    # BID
+            adv_o, adv, fav = d.o[a:b], d.lo[a:b], d.h[a:b]                       # BID
         else:
-            adv_o, adv, fav = d.o[k] + sp, d.h[k] + sp, d.lo[k] + sp    # ASK
+            adv_o, adv, fav = d.o[a:b] + sp, d.h[a:b] + sp, d.lo[a:b] + sp      # ASK
         sl_hit = s * (adv - sl) <= 0
-        tp_hit = s * (fav - tp) >= 0 and (k != fi or tp_from_same_bar)
-        if sl_hit:
-            gap = k != fi and s * (adv_o - sl) <= 0
-            exit_price = (adv_o if gap else sl) - s * slip
+        tp_hit = s * (fav - tp) >= 0
+        if a == fi and not tp_from_same_bar:
+            tp_hit[0] = False
+        si = int(np.argmax(sl_hit)) if sl_hit.any() else None
+        ti = int(np.argmax(tp_hit)) if tp_hit.any() else None
+        if si is not None and (ti is None or si <= ti):         # zelfde candle: SL telt
+            k = a + si
+            gap = k != fi and s * (adv_o[si] - sl) <= 0
+            exit_price = (adv_o[si] if gap else sl) - s * slip
             reason = "SL"; break
-        if tp_hit:
+        if ti is not None:
+            k = a + ti
             exit_price, reason = tp, "TP"; break
-        k += 1
     if reason is None:
-        k = min(k, len(d.t)) - 1                                       # laatste candle vóór einde dag
+        k = end - 1                                                 # laatste candle (dag of data)
         close = d.c[k] if long else d.c[k] + d.sp[k]
-        exit_price, reason = close - s * slip, "EINDE_DAG"
+        exit_price = close - s * slip
+        reason = "EINDE_DAG" if ins.close_eod else "EINDE_DATA"
 
     r_gross = s * (exit_price - fill) / risk
-    cost_r = ins.commission / risk
+    nights = int(d.day[k] - d.day[fi])
+    swap_r = ins.swap * nights / risk
+    cost_r = ins.commission / risk + swap_r
     return Trade(plan.direction, plan.signal_time, "gesloten", d.t[fi], fill, sl, tp, risk,
-                 d.t[k], exit_price, reason, r_gross, cost_r, r_gross - cost_r)
+                 d.t[k], exit_price, reason, r_gross, cost_r, r_gross - cost_r, nights, swap_r)
 
 
 # ---------------- Van setup naar orderplan ----------------
@@ -222,14 +255,26 @@ def run_portfolio(plans: list[OrderPlan], data: dict, instruments: dict, day_sto
     Speelt de plannen van alle markten in tijdsvolgorde af (spec §6):
     - maximaal 1 positie (of lopende limietorder) per markt;
     - na day_stop_r (som netto R over ALLE markten) op een Brusselse kalenderdag geen nieuwe trades;
+      een resultaat telt pas mee vanaf het moment dat de trade gesloten is, op de dag van de exit
+      (gecorrigeerd 9 okt 2026: vroeger telde een lopende trade van de andere markt al mee);
     - overgeslagen setups worden ook gelogd (status 'positie_open' of 'dagstop').
     `data` en `instruments` zijn dicts per marktnaam (M1-object en Instrument).
     """
+    import heapq
     rows = []
     busy_until: dict = {}
-    day_r: dict = {}
-    for p in sorted(plans, key=lambda x: (x.signal_time, x.market)):
-        day = (p.signal_time - pd.Timedelta(hours=server_offset_h)).date()
+    day_r: dict = {}          # gerealiseerde netto R per Brusselse dag (op de dag van de EXIT)
+    pending: list = []        # (exit_time, volgnr, exit_dag, r_net) van trades die nog lopen
+
+    def be_day(ts):
+        return (ts - pd.Timedelta(hours=server_offset_h)).date()
+
+    for n, p in enumerate(sorted(plans, key=lambda x: (x.signal_time, x.market))):
+        # Alleen resultaten die op dit moment al gerealiseerd zijn, tellen mee (geen vooruitkijken).
+        while pending and pending[0][0] <= p.signal_time:
+            _, _, dd, r = heapq.heappop(pending)
+            day_r[dd] = day_r.get(dd, 0.0) + r
+        day = be_day(p.signal_time)
         base = {"market": p.market, "direction": p.direction, "signal_time": p.signal_time}
         if p.signal_time < busy_until.get(p.market, pd.Timestamp.min):
             rows.append({**base, "status": "positie_open"}); continue
@@ -238,7 +283,8 @@ def run_portfolio(plans: list[OrderPlan], data: dict, instruments: dict, day_sto
         tr = simulate(p, data[p.market], instruments[p.market])
         if tr.status == "gesloten":
             busy_until[p.market] = tr.exit_time + pd.Timedelta(minutes=1)
-            day_r[day] = day_r.get(day, 0.0) + tr.r_net
+            heapq.heappush(pending, (tr.exit_time + pd.Timedelta(minutes=1), n, be_day(tr.exit_time),
+                                     tr.r_net))
         elif tr.status == "niet_gevuld" and p.valid_until is not None:
             busy_until[p.market] = p.valid_until
         rows.append({"market": p.market, **tr.as_dict()})

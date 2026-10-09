@@ -47,3 +47,22 @@ Max drawdown over 5 jaar: 54R tot 209R. Bij 1% risico per trade is dat onleefbaa
 
 ## Volgende stap
 Bouwsteen 3: FVG-retest (spec v0.1 §9). Eerst spec, dan grafieken, dan backtest.
+
+
+## Herhaling 9 okt 2026: zonder de 23:00-regel (trades lopen tot SL of TP)
+Zelfde setups en regels (met kostenplafond), maar geen sluiting om 23:00; met swap per nacht, verbrede rollover-spread en de gecorrigeerde dagstop (alleen gesloten trades tellen).
+
+| Variant | Goud oud → nieuw | EURUSD oud → nieuw |
+|---|---|---|
+| M5-A-L1 | −0,04 → −0,04 | −0,14 → −0,26 |
+| M5-A-L3 | −0,18 → −0,20 | −0,16 → −0,26 |
+| M5-B-L1 | −0,08 → −0,11 | −0,14 → −0,20 |
+| M5-B-L3 | −0,14 → −0,16 | −0,17 → −0,22 |
+| M15-A-L1 | −0,17 → −0,21 | −0,19 → −0,29 |
+| M15-A-L3 | −0,18 → −0,19 | −0,17 → −0,20 |
+| M15-B-L1 | −0,15 → −0,16 | −0,18 → −0,25 |
+| M15-B-L3 | −0,14 → −0,17 | −0,16 → −0,14 |
+
+- **Uitslag blijft: faalt.** Beste bij lage slippage −0,02R, bij hoge −0,07R.
+- 29% van de trades bleef minstens één nacht open (90% hoogstens 1 nacht, langste 48 nachten). Swap kostte gemiddeld 0,02R per trade.
+- Zonder kosten: tussen −0,16R en +0,08R; in 13 van de 16 gevallen nog altijd onder de placebo zonder kosten. Breuken lopen vaker terug dan door, ook als je ze langer laat lopen.

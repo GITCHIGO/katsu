@@ -50,3 +50,22 @@ Niets hiervan wordt nu een filter. Een filter mag alleen via een nieuwe spec, me
 
 ## Volgende stap
 Bouwsteen 2: **BOS-continuatie** (spec §9). Eerst de spec-tekst uitwerken en laten goedkeuren, dan bouwen, controlegrafieken, en dezelfde backtest.
+
+
+## Herhaling 9 okt 2026: zonder de 23:00-regel (trades lopen tot SL of TP)
+Zelfde setups en regels, maar geen sluiting om 23:00; met swap per nacht, verbrede rollover-spread en de gecorrigeerde dagstop (alleen gesloten trades tellen).
+
+| Variant | Goud oud → nieuw | EURUSD oud → nieuw |
+|---|---|---|
+| M5-A-L1 | −0,21 → −0,23 | −0,28 → −0,34 |
+| M5-A-L3 | −0,10 → −0,14 | −0,18 → −0,26 |
+| M5-B-L1 | −0,28 → −0,30 | −0,45 → −0,49 |
+| M5-B-L3 | −0,36 → −0,39 | −0,39 → −0,40 |
+| M15-A-L1 | −0,18 → −0,16 | −0,26 → −0,28 |
+| M15-A-L3 | −0,23 → −0,29 | −0,18 → −0,18 |
+| M15-B-L1 | −0,07 → −0,07 | −0,29 → −0,32 |
+| M15-B-L3 | −0,25 → −0,36 | −0,08 → −0,09 |
+
+- **Uitslag blijft: faalt.** Beste bij lage slippage −0,03R, bij hoge −0,12R. Geen kandidaat voor de keuzeregel.
+- 16% van de trades bleef minstens één nacht open (90% hoogstens 1 nacht, langste 14 nachten). Swap kostte gemiddeld 0,02R per trade.
+- Zonder kosten: tussen −0,22R en +0,14R, rond de placebo (−0,09 tot +0,04R). Geen voorsprong.

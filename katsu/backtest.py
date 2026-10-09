@@ -169,7 +169,7 @@ def run_variant(markets: list[MarketData], tf: str, variant: str, L: int,
         ins = replace(md.ins, slip=slip[md.name], cap_slip=md.ins.slip) if slip else md.ins
         d = M1(md.m1, ins)
         if frictionless:
-            ins_run = replace(ins, point=0.0, min_spread=0.0, slip=0.0, commission=0.0)
+            ins_run = replace(ins, point=0.0, min_spread=0.0, slip=0.0, commission=0.0, swap=0.0, rollover_min_spread=0.0)
             inss[md.name], data[md.name] = ins_run, M1(md.m1, ins_run)
         else:
             inss[md.name], data[md.name] = ins, d
@@ -232,7 +232,7 @@ def placebo(md: MarketData, tf: str, risk_atr: np.ndarray, n: int = 3000, seed: 
     rng = np.random.default_rng(seed)
     ins = md.ins
     if frictionless:
-        ins = replace(ins, point=0.0, min_spread=0.0, slip=0.0, commission=0.0)
+        ins = replace(ins, point=0.0, min_spread=0.0, slip=0.0, commission=0.0, swap=0.0, rollover_min_spread=0.0)
     b, a, _ = md.tf_bars(tf)
     hrs = (b.index - pd.Timedelta(hours=SERVER_OFFSET_H)).hour
     ok = np.where(a.notna().to_numpy() & (hrs >= 1) & (hrs < 21))[0]
