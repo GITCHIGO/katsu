@@ -77,7 +77,10 @@ Alle berekeningen gebruiken **alleen gesloten candles**. Een swing telt pas als 
 1. Entry op een prijs die echt bestond: **open van de volgende candle + spread** (buy) of open (sell).
 2. SL en TP worden gecontroleerd op **M1-high/low**, niet alleen op de close.
 3. Raakt één M1-candle zowel SL als TP → **SL telt** (conservatief).
-4. **Kosten:** spread uit de data (met minimum, zie §2) + commissie €7 per lot round turn (bevestigd op echte goudtrade: −0,14 op 0,02 lot; raw-account) + 1 tick slippage per uitvoering.
+4. **Kosten:** spread uit de data (met minimum, zie §2) + commissie €7 per lot round turn (bevestigd op echte goudtrade: −0,14 op 0,02 lot; raw-account) + slippage op elke markt- en stopuitvoering.
+   - **Slippage (vastgelegd 9 okt 2026, vóór enig resultaat):** goud **$0,25** als basis; stresstest op $0,10 en $0,50. Succescriteria moeten gehaald worden bij de basis; bij de hoogste stresswaarde mag het resultaat niet negatief zijn.
+   - Reden: 1 tick bleek te optimistisch. Op Gitchi's EURUSD-trades lag het echte SL-verlies mediaan ~1,4 pip boven het geplande (19 trades, demo, inclusief entryverschillen); op zijn enige echte goudtrade $1,19.
+   - Na de demo wordt de slippage vervangen door de gemeten waarde.
 5. Geen data van een ander instrument, geen fallbacks.
 6. Exacte zelfde code voor backtest en later live.
 
