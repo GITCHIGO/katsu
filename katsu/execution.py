@@ -120,10 +120,12 @@ def planned_cost_r(plan: OrderPlan, d: M1, ins: Instrument, i: int | None = None
     Verwachte kosten in R op het moment dat de order vertrekt (spec v0.2 §4).
     Kosten = spread (met minimum) + 2 × slippage + commissie.
     R = geplande entry (markt: open + spread + slippage; limiet: limietprijs) tot de geplande SL.
-    Geeft (risk, kosten_in_R); kosten_in_R is None als de risk niet positief is.
+    Geeft (risk, kosten_in_R); kosten_in_R is None als de risk niet positief is of er geen data is.
     """
     if i is None:
         i = int(d.t.searchsorted(plan.signal_time))
+    if i >= len(d.t):                       # signaal na de laatste candle: geen data, geen order
+        return None, None
     long = plan.direction == LONG
     s = 1.0 if long else -1.0
     sp0 = d.sp[i]

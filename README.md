@@ -18,7 +18,7 @@ Onderzoek dat tot de eerste spec leidde: [`docs/onderzoek_forexdetective.md`](do
 - [x] Bouwsteen 2: spec v0.2 goedgekeurd, BOS-detectie + tests, controlegrafieken
 - [x] Bouwsteen 2: kostenplafond 0,2R, backtest 2020–2024 — faalt, zie docs/stap4_resultaat_bouwsteen2.md
 - [x] Bouwsteen 3: spec v0.3 goedgekeurd, FVG-detectie + trendspotter (snel) + tests, controlegrafieken
-- [ ] Bouwsteen 3: oordeel Gitchi over de grafieken, daarna backtest 2020–2024
+- [x] Bouwsteen 3: backtest 2020–2024 — formeel faalt, maar M15 + H1/H4 toont voorsprong vóór kosten, zie docs/stap4_resultaat_bouwsteen3.md
 
 ## Tests draaien
 ```

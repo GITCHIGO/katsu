@@ -5,7 +5,7 @@ Stap 4: backtest op de in-sample periode (2020–2024), spec §8.
 (1 positie per markt, gezamenlijke dagstop −2R).
 De out-of-sample periode (vanaf 1 jan 2025) wordt weggesneden VÓÓR er iets berekend wordt.
 
-Gebruik: python -m scripts.backtest <xau_m1.pkl> <eur_m1.pkl> <uitmap> [sweep|bos] [label]
+Gebruik: python -m scripts.backtest <xau_m1.pkl> <eur_m1.pkl> <uitmap> [sweep|bos|fvg] [label]
 Schrijft: <uitmap>/trades_insample.pkl (bouwsteen 1) of trades_insample_bos.pkl (bouwsteen 2),
 plus voor bos: diagnose_bos.pkl (zonder kosten + placebo, spec v0.2 §6).
 """
@@ -24,6 +24,12 @@ SLIPPAGE = {  # spec §5: stress laag / basis / stress hoog
     "hoog": {"XAUUSD": 0.50, "EURUSD": 0.00006},
 }
 VARIANTS = [(tf, v, L) for tf in ("5min", "15min") for v in ("A", "B") for L in (1, 3)]
+# Bouwsteen 3 (FVG): de derde as is de trendfilter i.p.v. de swinglengte (spec v0.3 §6).
+VARIANTS_FVG = [(tf, v, f) for tf in ("5min", "15min") for v in ("A", "B") for f in ("T0", "T+")]
+
+
+def variants(block):
+    return VARIANTS_FVG if block == "fvg" else VARIANTS
 
 
 def main(xau_path, eur_path, outdir, block="sweep", tag=""):
@@ -34,7 +40,7 @@ def main(xau_path, eur_path, outdir, block="sweep", tag=""):
         assert m1.index.max() < pd.Timestamp("2025-01-01"), "out-of-sample data gelekt"
         markets.append(MarketData(name, m1, ins))
     allt = []
-    for tf, v, L in VARIANTS:
+    for tf, v, L in variants(block):
         for lvl, slip in SLIPPAGE.items():
             t0 = time.time()
             out = run_variant(markets, tf, v, L, slip=slip, block=block)
@@ -54,7 +60,7 @@ def main(xau_path, eur_path, outdir, block="sweep", tag=""):
 def diagnose(markets, trades, outdir, block, tag=""):
     """Spec v0.2 §6: per variant dezelfde setups zonder kosten, en een placebo met dezelfde SL-groottes."""
     rows = []
-    for tf, v, L in VARIANTS:
+    for tf, v, L in variants(block):
         fr = run_variant(markets, tf, v, L, block=block, frictionless=True)
         name = fr.variant.iloc[0]
         for r in summary(fr, ["market"]).itertuples():
@@ -66,7 +72,7 @@ def diagnose(markets, trades, outdir, block, tag=""):
             if len(g) < 20:
                 continue
             risk_atr = (g.risk / g.atr).to_numpy()
-            cap0 = 0.2 if block == "bos" else None          # kostenplafond hoort bij spec v0.2+
+            cap0 = 0.2 if block in ("bos", "fvg") else None          # kostenplafond hoort bij spec v0.2+
             for soort, fric, cap in (("placebo met kosten", False, cap0), ("placebo zonder kosten", True, None)):
                 pl = placebo(md, tf, risk_atr, n=3000, seed=7, max_cost_r=cap, frictionless=fric)
                 m = metrics(pl[pl.status == "gesloten"].sort_values("entry_time").r_net)

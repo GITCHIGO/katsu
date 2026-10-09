@@ -259,3 +259,11 @@ def test_dagstop_telt_alleen_gesloten_trades():
     out = run_portfolio(p, {"XAUUSD": g, "EURUSD": e}, {"XAUUSD": INS, "EURUSD": INS}, day_stop_r=-0.5)
     assert list(zip(out.market, out.status)) == [("XAUUSD", "gesloten"), ("EURUSD", "gesloten"),
                                                   ("XAUUSD", "dagstop")]
+
+
+def test_kostenplafond_signaal_na_laatste_candle():
+    from katsu.execution import planned_cost_r
+    d = m1([(100, 100.5, 99.8, 100.2)])
+    late = OrderPlan("LONG", T0 + pd.Timedelta(minutes=5), "market", 98.0, 1.0, max_cost_r=0.2)
+    assert planned_cost_r(late, d, INS) == (None, None)
+    assert simulate(late, d, INS).status == "geen_data"
