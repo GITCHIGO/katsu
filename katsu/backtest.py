@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from katsu.bos import detect_bos, make_bos_plan
+from katsu.fvg import detect_fvg, make_fvg_plan
 from katsu.data import resample
 from katsu.execution import (M1, Instrument, OrderPlan, entry_level_variant_b, make_plan,
                              planned_cost_r, run_portfolio)
@@ -116,6 +117,21 @@ def bos_context(setup, bars: pd.DataFrame, atr_series: pd.Series, atr_pct: pd.Se
     }
 
 
+def fvg_context(setup, bars: pd.DataFrame, atr_series: pd.Series, atr_pct: pd.Series,
+                trends: dict) -> dict:
+    """Context van een FVG-setup (spec v0.3)."""
+    t_be = setup.signal_time - pd.Timedelta(hours=SERVER_OFFSET_H)
+    i = setup.index
+    a = float(atr_series.iloc[i])
+    return {
+        "uur_be": t_be.hour, "dag_be": t_be.day_name(), "sessie": session_be(t_be.hour),
+        "ochtend": 6 <= t_be.hour < 12,
+        "atr": a, "atr_pct": float(atr_pct.iloc[i]),
+        "fvg_grootte_atr": (setup.top - setup.bottom) / a if a > 0 else np.nan,
+        **{f"trend_{k}": v for k, v in trends.items()},
+    }
+
+
 # ---------------- Voorbereiding per markt ----------------
 
 class MarketData:
@@ -136,8 +152,9 @@ class MarketData:
             self.bars[tf] = (b, a, pct)
         return self.bars[tf]
 
-    def setups(self, tf: str, L: int, block: str = "sweep") -> list:
-        """block = "sweep" (bouwsteen 1, sweep + CHoCH) of "bos" (bouwsteen 2)."""
+    def setups(self, tf: str, L, block: str = "sweep") -> list:
+        """block = "sweep" (bouwsteen 1), "bos" (bouwsteen 2) of "fvg" (bouwsteen 3).
+        Bij "fvg" is L de trendfilter ("T0" of "T+"), want een FVG heeft geen swings nodig."""
         key = (tf, L, block)
         if key not in self._setups:
             b, _, _ = self.tf_bars(tf)
@@ -145,6 +162,8 @@ class MarketData:
                 self._setups[key] = detect_setups(b, tf, self.h1_trend, L=L)
             elif block == "bos":
                 self._setups[key] = detect_bos(b, tf, self.h1_trend, L=L)
+            elif block == "fvg":
+                self._setups[key] = detect_fvg(b, tf, self.ctx_trend, filt=L)
             else:
                 raise ValueError(f"onbekende bouwsteen: {block}")
         return self._setups[key]
@@ -175,15 +194,19 @@ def run_variant(markets: list[MarketData], tf: str, variant: str, L: int,
             inss[md.name], data[md.name] = ins, d
         b, a, pct = md.tf_bars(tf)
         for s in md.setups(tf, L, block):
-            if block == "bos":
-                p = make_bos_plan(s, tf, a, variant, ins)
+            if block in ("bos", "fvg"):
+                if block == "bos":
+                    p = make_bos_plan(s, tf, a, variant, ins)
+                    ctx = bos_context(s, b, a, pct, md.ctx_trend(s.signal_time))
+                else:
+                    p = make_fvg_plan(s, tf, a, variant, ins)
+                    ctx = fvg_context(s, b, a, pct, md.ctx_trend(s.signal_time))
                 if frictionless and p.max_cost_r is not None:
                     _, cr = planned_cost_r(p, d, ins)
                     if cr is None or cr > p.max_cost_r:
                         continue                       # zou bij echte kosten overgeslagen zijn
                     p = replace(p, max_cost_r=None)
                 plans.append(p)
-                ctx = bos_context(s, b, a, pct, md.ctx_trend(s.signal_time))
             else:
                 plans.append(make_plan(s, b, tf, a, variant, ins))
                 ctx = setup_context(s, b, a, pct, md.ctx_trend(s.signal_time))
@@ -195,8 +218,12 @@ def run_variant(markets: list[MarketData], tf: str, variant: str, L: int,
         return out
     ctx = pd.DataFrame([ctx_rows[k] for k in zip(out.market, out.signal_time, out.direction)])
     out = pd.concat([out.reset_index(drop=True), ctx], axis=1)
-    prefix = "BOS-" if block == "bos" else ""
-    out.insert(0, "variant", f"{prefix}{TF_NAMES.get(tf, tf)}-{variant}-L{L}")
+    if block == "fvg":
+        name = f"FVG-{TF_NAMES.get(tf, tf)}-{variant}-{L}"
+    else:
+        prefix = "BOS-" if block == "bos" else ""
+        name = f"{prefix}{TF_NAMES.get(tf, tf)}-{variant}-L{L}"
+    out.insert(0, "variant", name)
     out["jaar"] = (out.signal_time - pd.Timedelta(hours=SERVER_OFFSET_H)).dt.year
     return out
 

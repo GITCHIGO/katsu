@@ -66,6 +66,31 @@ def trend_at(swings: list[Swing], n: int) -> str:
     return NEUTRAL
 
 
+def trend_series(swings: list[Swing], n_bars: int) -> list[str]:
+    """
+    Trend op elke candle 0..n_bars-1, exact gelijk aan trend_at(swings, n) maar in één doorgang
+    (snel genoeg om op elke candle op te vragen; nodig voor de 24/7-trendspotter).
+    """
+    highs = sorted((s for s in swings if s.kind == "HIGH"), key=lambda s: s.confirmed_at)
+    lows = sorted((s for s in swings if s.kind == "LOW"), key=lambda s: s.confirmed_at)
+    out, ih, il = [], 0, 0
+    h1 = h2 = l1 = l2 = None      # h2/l2 = laatste, h1/l1 = voorlaatste
+    for n in range(n_bars):
+        while ih < len(highs) and highs[ih].confirmed_at <= n:
+            h1, h2 = h2, highs[ih].price; ih += 1
+        while il < len(lows) and lows[il].confirmed_at <= n:
+            l1, l2 = l2, lows[il].price; il += 1
+        if h1 is None or l1 is None:
+            out.append(NEUTRAL)
+        elif h2 > h1 and l2 > l1:
+            out.append(UP)
+        elif h2 < h1 and l2 < l1:
+            out.append(DOWN)
+        else:
+            out.append(NEUTRAL)
+    return out
+
+
 def atr(bars: pd.DataFrame, n: int = 14) -> pd.Series:
     """Average True Range (eenvoudig voortschrijdend gemiddelde van de true range)."""
     prev_close = bars["close"].shift()

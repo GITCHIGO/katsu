@@ -143,3 +143,51 @@ def save_bos_pdf(items: list, path: str, intro: str) -> None:
             plot_bos_setup(ax, setup, bars, trade, title)
             ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize=7, ncol=8, frameon=False)
             fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
+
+
+# ---------------- Bouwsteen 3: FVG-retest ----------------
+
+def plot_fvg_setup(ax, setup, bars: pd.DataFrame, trade: dict | None, title: str,
+                   server_offset_h: int = 1, before: int = 20, after: int = 30) -> None:
+    a = max(setup.index - 2 - before, 0)
+    b = min(setup.index + after, len(bars) - 1)
+    if trade and trade.get("exit_time") is not None:
+        ex = int(bars.index.searchsorted(trade["exit_time"], side="right")) - 1
+        b = min(max(b, ex + 5), len(bars) - 1, a + 400)     # lange trades: venster begrenzen
+    w = bars.iloc[a:b + 1]
+    x = _candles(ax, w)
+
+    def X(i): return i - a
+
+    ax.add_patch(Rectangle((X(setup.index - 2) - 0.4, setup.bottom), 12 + 2.8, setup.top - setup.bottom,
+                           color="#1565c0", alpha=0.18, label="FVG (gap)"))
+    ax.hlines(setup.anchor, X(setup.index - 2), X(setup.index) + 1, colors="#ef6c00", linestyles="--",
+              linewidth=1.2, label="laagste low / hoogste high van de FVG (SL-basis)")
+    if trade and trade.get("fill") is not None:
+        e = int(bars.index.searchsorted(trade["entry_time"], side="right")) - 1
+        x1 = X(int(bars.index.searchsorted(trade["exit_time"], side="right")) - 1) \
+            if trade.get("exit_time") is not None else X(b)
+        x1 = min(max(x1, X(e) + 1), X(b))
+        ax.hlines(trade["fill"], X(e), x1, colors="black", linewidth=2.0, label="entry")
+        if trade.get("sl") is not None:
+            ax.hlines(trade["sl"], X(e), x1, colors="#8e24aa", linewidth=2.2, label="SL")
+        if trade.get("tp") is not None:
+            ax.hlines(trade["tp"], X(e), x1, colors="#00838f", linewidth=2.2, linestyles="-.", label="TP")
+    step = max(len(x) // 8, 1)
+    lab = (w.index - pd.Timedelta(hours=server_offset_h)).strftime("%d/%m %H:%M")
+    ax.set_xticks(x[::step]); ax.set_xticklabels(lab[::step], rotation=30, fontsize=7)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.set_title(title, fontsize=9)
+    ax.grid(alpha=0.2)
+
+
+def save_fvg_pdf(items: list, path: str, intro: str) -> None:
+    from matplotlib.backends.backend_pdf import PdfPages
+    with PdfPages(path) as pdf:
+        fig = plt.figure(figsize=(11.7, 8.3)); fig.text(0.06, 0.94, intro, va="top", fontsize=11, family="monospace")
+        pdf.savefig(fig); plt.close(fig)
+        for setup, bars, trade, title in items:
+            fig, ax = plt.subplots(figsize=(11.7, 6.5))
+            plot_fvg_setup(ax, setup, bars, trade, title)
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize=7, ncol=6, frameon=False)
+            fig.tight_layout(); pdf.savefig(fig); plt.close(fig)

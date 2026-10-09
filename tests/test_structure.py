@@ -79,3 +79,20 @@ def test_trend_neutraal_bij_gemengd():
 def test_trend_neutraal_bij_te_weinig_swings():
     b = zigzag([("L", 10), ("H", 20), ("L", 12)])
     assert trend_at(find_swings(b, 1), len(b) - 1) == NEUTRAL
+
+
+def test_trend_series_gelijk_aan_trend_at_op_elke_candle():
+    """De snelle trendspotter moet op elke candle exact hetzelfde geven als de oorspronkelijke definitie."""
+    import numpy as np
+    import pandas as pd
+    from katsu.structure import find_swings, trend_at, trend_series
+    rng = np.random.default_rng(3)
+    p = 100 + np.cumsum(rng.normal(0, 1, 3000))
+    bars = pd.DataFrame({"open": p, "high": p + rng.uniform(0, 1, 3000), "low": p - rng.uniform(0, 1, 3000),
+                         "close": p}, index=pd.date_range("2024-01-01", periods=3000, freq="5min"))
+    for L in (1, 3):
+        sw = find_swings(bars, L)
+        fast = trend_series(sw, len(bars))
+        slow = [trend_at(sw, n) for n in range(len(bars))]
+        assert fast == slow
+        assert {"UP", "DOWN", "NEUTRAL"} <= set(fast)

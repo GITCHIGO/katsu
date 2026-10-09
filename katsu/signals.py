@@ -136,15 +136,16 @@ def trend_lookup(bars: pd.DataFrame, tf: str, L: int = 3) -> Callable[[pd.Timest
     Geeft een functie trend(t): de trend op deze timeframe op tijdstip t, enkel op basis van
     candles die op t volledig gesloten zijn en swings die toen al bevestigd waren.
     """
-    from katsu.structure import trend_at
+    from katsu.structure import trend_series
     swings = find_swings(bars, L)
     ends = bars.index + pd.Timedelta(tf)
+    series = trend_series(swings, len(bars))          # trend op elke candle, vooraf berekend
 
     def trend(t: pd.Timestamp) -> str:
         n = int(ends.searchsorted(t, side="right")) - 1   # laatste candle met einde <= t
         if n < 0:
             return "NEUTRAL"
-        return trend_at(swings, n)
+        return series[n]
     return trend
 
 

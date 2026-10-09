@@ -165,3 +165,22 @@ def test_stresstest_verandert_niet_welke_setups_genomen_worden():
     weg_b = [planned_cost_r(p, db, basis)[1] > 0.2 for p in plans]
     weg_s = [planned_cost_r(p, ds, stress)[1] > 0.2 for p in plans]
     assert any(weg_b) and weg_b == weg_s
+
+
+def test_fvg_variant_gebruikt_dezelfde_bouwstenen():
+    """Bouwsteen 3 in de backtest = detect_fvg -> make_fvg_plan -> run_portfolio, niets anders."""
+    from katsu.fvg import detect_fvg, make_fvg_plan
+    m1 = _random_m1()
+    ins = Instrument("XAUUSD", slip=0.25)
+    md = MarketData("XAUUSD", m1, ins)
+    for v, f in (("A", "T0"), ("B", "T+")):
+        out = run_variant([md], "5min", v, f, block="fvg")
+        b, a, _ = md.tf_bars("5min")
+        setups = detect_fvg(b, "5min", md.ctx_trend, filt=f)
+        assert len(setups) > 0
+        ref = run_portfolio([make_fvg_plan(s, "5min", a, v, ins) for s in setups],
+                            {"XAUUSD": M1(m1, ins)}, {"XAUUSD": ins})
+        assert list(out.status) == list(ref.status)
+        np.testing.assert_allclose(out.r_net.to_numpy(float), ref.r_net.to_numpy(float), equal_nan=True)
+        assert set(out.variant) == {f"FVG-M5-{v}-{f}"}
+        assert "fvg_grootte_atr" in out.columns

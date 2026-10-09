@@ -24,3 +24,15 @@ def test_bos_pdf_wordt_gemaakt(tmp_path):
     out = tmp_path / "bos.pdf"
     save_bos_pdf([(s, bars, trade, "test")], str(out), "intro")
     assert out.stat().st_size > 1000
+
+
+def test_fvg_pdf_wordt_gemaakt(tmp_path):
+    from tests.test_fvg import ALL_UP, BASE as F_BASE, make as f_make
+    from katsu.fvg import detect_fvg
+    from katsu.plotting import save_fvg_pdf
+    bars = f_make(F_BASE)
+    s = detect_fvg(bars, "5min", lambda t: ALL_UP, "T+")[0]
+    trade = {"fill": 102, "sl": 98.8, "tp": 108.4, "entry_time": bars.index[3], "exit_time": None}
+    out = tmp_path / "fvg.pdf"
+    save_fvg_pdf([(s, bars, trade, "test")], str(out), "intro")
+    assert out.stat().st_size > 1000

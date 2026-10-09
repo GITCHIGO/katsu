@@ -1,6 +1,6 @@
 # KATSU — Spec v0.3: FVG-retest met de hogere timeframes mee (bouwsteen 3)
 
-**Status:** CONCEPT — wacht op goedkeuring van Gitchi. Er wordt niets gebouwd voor deze spec is goedgekeurd.
+**Status:** GOEDGEKEURD door Gitchi op 9 okt 2026. Volgende stap: bouwen + controlegrafieken.
 **Datum:** 9 oktober 2026
 **Vorige bouwstenen:** v0.1 sweep + CHoCH (faalt, ≈ willekeurig), v0.2 BOS-continuatie (faalt, iets slechter dan willekeurig). Zie `docs/stap4_resultaat_bouwsteen1.md` en `…2.md`.
 

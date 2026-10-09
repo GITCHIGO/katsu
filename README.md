@@ -17,7 +17,8 @@ Onderzoek dat tot de eerste spec leidde: [`docs/onderzoek_forexdetective.md`](do
 - [x] Backtest 2020–2024 in R — bouwsteen 1 (sweep + CHoCH) faalt, zie docs/stap4_resultaat_bouwsteen1.md
 - [x] Bouwsteen 2: spec v0.2 goedgekeurd, BOS-detectie + tests, controlegrafieken
 - [x] Bouwsteen 2: kostenplafond 0,2R, backtest 2020–2024 — faalt, zie docs/stap4_resultaat_bouwsteen2.md
-- [ ] Bouwsteen 3: FVG-retest (spec uitwerken)
+- [x] Bouwsteen 3: spec v0.3 goedgekeurd, FVG-detectie + trendspotter (snel) + tests, controlegrafieken
+- [ ] Bouwsteen 3: oordeel Gitchi over de grafieken, daarna backtest 2020–2024
 
 ## Tests draaien
 ```
