@@ -1,6 +1,6 @@
 # KATSU — onderzoeksplan: een echte edge zoeken (fase 2)
 
-**Status:** CONCEPT ter bespreking — er wordt niets gebouwd voor Gitchi akkoord gaat.
+**Status:** GOEDGEKEURD 11 okt 2026 (opdeling en werkwijze). Laag 1 wordt gebouwd.
 **Datum:** 10 oktober 2026
 **Vraag van Gitchi:** niet gewoon alles testen en met het resultaat werken, maar grondig zoeken *wat werkt en wat niet*, met alle varianten van sweep, CHoCH, BOS en FVG, ook op H1 en H4. Eerst brainstormen en zo veel mogelijk bedenken, dan pas bouwen.
 
@@ -33,22 +33,27 @@ Pas dan: entry, SL, TP, uitvoering op M1 met alle kosten, placebo, kostenplafond
 - Bevestiging op een apart stuk data dat in laag 1 en 2 niet gebruikt is.
 - Daarna, voor de allerbeste kandidaat (of hoogstens enkele), de eenmalige eindtest op 2025–2026.
 
-## 4. Data opdelen (voorstel 10 okt 2026, na vraag van Gitchi)
-Bezorgdheid Gitchi: 2020–2022 was een aparte periode (corona, oorlog, inflatie, renteschokken). Een chronologische opdeling (2020–2022 zoeken, 2023–2024 bevestigen) zou dan zoeken in één soort markt en bevestigen in een andere.
+## 4. Data opdelen (vastgelegd 11 okt 2026, akkoord Gitchi)
+**Eindtest = 2025–2026, op slot** (uitdrukkelijke wens Gitchi). De data vanaf 1 jan 2025 wordt weggesneden vóór er iets berekend wordt.
 
-**Voorstel: om-en-om per maand binnen 2020–2024, en 2025–2026 als echte toekomst.**
 | Data | Gebruik |
 |---|---|
-| Oneven maanden 2020–2024 (jan, mrt, mei, …) + oudere H1/H4-data (als die er komt) | Verkennen (laag 1 en 2) |
-| Even maanden 2020–2024 (feb, apr, jun, …) | Bevestigen (alleen kandidaten, één keer) |
+| Alles vóór 2020 (FX vanaf 2010, goud/zilver/US500 vanaf feb 2016) **+ oneven maanden 2020–2024** | Verkennen (laag 1 en 2) |
+| Even maanden 2020–2024 | Bevestigen (alleen kandidaten, één keer) |
 | 2025–2026 | Eindtest (één keer, na bevroren spec) |
 
-- Zo zit elke soort markt (corona, oorlog, renteverhogingen, de goudrally van 2024) in beide helften.
-- Trades die over een maandgrens lopen, horen bij de maand waarin ze openen.
-- De eindtest blijft chronologisch: 2025–2026 is echt "de toekomst" voor alles wat we bedenken.
-- Extra eis: een effect moet in de meeste afzonderlijke jaren dezelfde kant op wijzen, niet alleen gemiddeld.
+- Zo zit elke soort markt (rustige jaren 2016–2019, corona, oorlog, renteverhogingen, de goudrally) in de verkenning, en de bevestiging ligt in dezelfde rommelige jaren 2020–2024 maar op andere maanden.
+- Een gebeurtenis hoort bij de maand waarin ze ontstaat; de meetvensters stoppen uiterlijk op 31 dec 2024.
+- Extra eis: een effect moet in de meeste afzonderlijke jaren dezelfde kant op wijzen.
 
-Eerlijke kanttekening: van bouwsteen 1–3 hebben we 2020–2024 al gezien. Voor **nieuwe** varianten (H1/H4, nieuwe soorten liquiditeit, …) is de bevestigingshelft nog onaangeroerd.
+**Beschikbare data (ontvangen 11 okt 2026, IC Markets MT5):**
+| Markt | M15 / H1 / H4 intraday vanaf | Spread in de data |
+|---|---|---|
+| EURUSD, GBPUSD | jan 2010 | ja |
+| XAUUSD, XAGUSD | eind jan 2016 (daarvóór alleen dagcandles) | deels |
+| US500 | feb 2016 (daarvóór alleen dagcandles) | deels |
+| XAUUSD, EURUSD M1 | jan 2020 | ja |
+Controle: H1 uit het bestand en H1 gebouwd uit de M1-data komen voor 94–99% van de candles tot op 1 tick overeen (2020–2026).
 
 **Waarom oudere data belangrijk is:** een BOS op H4 komt maar ~40–75 keer per jaar per markt voor. Op 3 jaar verkenningsdata is dat te weinig om iets te bewijzen. Met H1/H4 vanaf bv. 2010 wordt dat 5 keer zoveel.
 
@@ -90,7 +95,7 @@ Eerlijke kanttekening: van bouwsteen 1–3 hebben we 2020–2024 al gezien. Voor
 - Geen combinaties stapelen tot het past. Combinaties mogen pas tussen gebeurtenissen die elk apart al informatie tonen.
 
 ## 8. Stand van de vragen (10 okt 2026)
-1. Oudere H1/H4/M15-data: Gitchi komt hier later op terug.
-2. Opdeling: voorstel om-en-om per maand (zie §4) — wacht op akkoord.
-3. Extra markten alleen als bewijs: Gitchi kan de data regelen. Voorstel: XAGUSD (zilver), GBPUSD, USDJPY en een index (US500 of US30), op H1/H4/M15 zo ver terug als het gaat. M1 alleen voor markten die hij echt zou traden.
-4. Swap: niet nodig voor laag 1 (zonder kosten). Wel voor laag 2 op H1/H4, waar trades meerdere nachten openblijven (bv. 4 nachten × $0,40 op een SL van $15 ≈ 0,1R). Eén screenshot volstaat, liefst vóór laag 2.
+1. Oudere H1/H4/M15-data: ontvangen (zie §4).
+2. Opdeling: akkoord, met 2025–2026 als eindtest (zie §4).
+3. Extra markten alleen als bewijs: ontvangen voor GBPUSD, XAGUSD en US500 (USDJPY nog niet).
+4. Swap EURUSD gemeten op Gitchi's trades (sep–okt 2026): long ≈ −€7/lot/nacht (≈ 0,8 pip, nu zo ingesteld), short ≈ +€1,4 tot +€3,8 (opbrengst, wordt bewust niet meegeteld → 0). Goud: geen gegevens, voorlopig $0,40/oz per nacht in beide richtingen als kost.

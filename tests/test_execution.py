@@ -267,3 +267,21 @@ def test_kostenplafond_signaal_na_laatste_candle():
     late = OrderPlan("LONG", T0 + pd.Timedelta(minutes=5), "market", 98.0, 1.0, max_cost_r=0.2)
     assert planned_cost_r(late, d, INS) == (None, None)
     assert simulate(late, d, INS).status == "geen_data"
+
+
+def test_swap_apart_voor_long_en_short():
+    """EURUSD-instelling: long betaalt swap, short niet (opbrengst wordt niet meegeteld)."""
+    from dataclasses import replace
+    ins = replace(INS, swap=0.05, swap_short=0.0)
+    idx = pd.to_datetime(["2025-01-06 23:58", "2025-01-06 23:59", "2025-01-07 01:00"])
+    # SHORT: fill 99,99 · SL 102,20 · risk 2,21 · TP 95,57; TP de volgende dag
+    d = M1(pd.DataFrame({"open": [100, 99.6, 95.6], "high": [100.2, 99.7, 95.7],
+                         "low": [99.5, 99.5, 95.4], "close": [99.6, 99.6, 95.5], "spread": 5}, index=idx), ins)
+    tr = simulate(OrderPlan("SHORT", idx[0], "market", 102.0, 1.0), d, ins)
+    assert tr.nights == 1 and tr.swap_r == 0.0
+    assert tr.r_net == pytest.approx(2.0 - 0.08 / 2.21)
+
+
+def test_eurusd_swap_preset():
+    from katsu.execution import EURUSD
+    assert (EURUSD.swap, EURUSD.swap_short) == (0.00008, 0.0)

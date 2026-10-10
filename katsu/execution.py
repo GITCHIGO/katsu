@@ -44,7 +44,9 @@ class Instrument:
     cap_slip: float | None = None # slippage waarmee het kostenplafond rekent (None = slip).
                                   # Bij een stresstest blijft de beslissing op de basis-slippage,
                                   # alleen de uitvoering wordt slechter.
-    swap: float = 0.0             # swapkost per eenheid per nacht, in prijs (altijd als kost geteld)
+    swap: float = 0.0             # swapkost LONG per eenheid per nacht, in prijs (positief = kost)
+    swap_short: float | None = None   # swapkost SHORT; None = zelfde als long. Een swap-opbrengst
+                                      # wordt bewust niet meegeteld (0 = gratis, nooit negatief)
     rollover_min_spread: float = 0.0  # spread tijdens rollover = max(2 × data, dit); 0 = uit
     close_eod: bool = False       # True = oud gedrag: sluiten om 00:00 server (23:00 BE)
 
@@ -55,7 +57,10 @@ XAUUSD = Instrument("XAUUSD", tick=0.01, point=0.01, min_spread=0.10, slip=0.25,
                     swap=0.40, rollover_min_spread=0.50)          # $40/lot/nacht · rollover min $0,50
 EURUSD = Instrument("EURUSD", tick=0.00001, point=0.00001, min_spread=0.00001, slip=0.00003,
                     commission=0.00008,                            # €7/lot ≈ $8 per 100.000 = 0,8 pip
-                    swap=0.00007, rollover_min_spread=0.00005)     # $7/lot/nacht · rollover min 0,5 pip
+                    swap=0.00008, swap_short=0.0,                  # gemeten op Gitchi's trades (sep-okt 2026):
+                                                                   # long ≈ −€7/lot/nacht ≈ 0,8 pip; short ≈ +€1,4–3,8
+                                                                   # (opbrengst, niet meegeteld)
+                    rollover_min_spread=0.00005)                   # rollover min 0,5 pip
 
 ROLLOVER_START, ROLLOVER_END = 23 * 60 + 55, 90   # servertijd in minuten: 23:55 tot 01:30
 CHUNK = 2880                                      # aantal M1-candles per zoekstap (2 dagen)
@@ -217,7 +222,8 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
 
     r_gross = s * (exit_price - fill) / risk
     nights = int(d.day[k] - d.day[fi])
-    swap_r = ins.swap * nights / risk
+    swap_rate = ins.swap if (long or ins.swap_short is None) else ins.swap_short
+    swap_r = max(swap_rate, 0.0) * nights / risk
     cost_r = ins.commission / risk + swap_r
     return Trade(plan.direction, plan.signal_time, "gesloten", d.t[fi], fill, sl, tp, risk,
                  d.t[k], exit_price, reason, r_gross, cost_r, r_gross - cost_r, nights, swap_r)
