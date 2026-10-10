@@ -33,15 +33,22 @@ Pas dan: entry, SL, TP, uitvoering op M1 met alle kosten, placebo, kostenplafond
 - Bevestiging op een apart stuk data dat in laag 1 en 2 niet gebruikt is.
 - Daarna, voor de allerbeste kandidaat (of hoogstens enkele), de eenmalige eindtest op 2025–2026.
 
-## 4. Data opdelen (vooraf vastgelegd)
-| Periode | Gebruik |
+## 4. Data opdelen (voorstel 10 okt 2026, na vraag van Gitchi)
+Bezorgdheid Gitchi: 2020–2022 was een aparte periode (corona, oorlog, inflatie, renteschokken). Een chronologische opdeling (2020–2022 zoeken, 2023–2024 bevestigen) zou dan zoeken in één soort markt en bevestigen in een andere.
+
+**Voorstel: om-en-om per maand binnen 2020–2024, en 2025–2026 als echte toekomst.**
+| Data | Gebruik |
 |---|---|
-| (Ouder dan 2020, als Gitchi H1/H4 kan exporteren) | Extra verkenningsdata voor H1/H4 |
-| 2020–2022 | Verkennen (laag 1 en 2) |
-| 2023–2024 | Bevestigen (alleen kandidaten, één keer) |
+| Oneven maanden 2020–2024 (jan, mrt, mei, …) + oudere H1/H4-data (als die er komt) | Verkennen (laag 1 en 2) |
+| Even maanden 2020–2024 (feb, apr, jun, …) | Bevestigen (alleen kandidaten, één keer) |
 | 2025–2026 | Eindtest (één keer, na bevroren spec) |
 
-Eerlijke kanttekening: van bouwsteen 1–3 hebben we de jaren 2023–2024 al per jaar gezien. Voor **nieuwe** varianten (H1/H4, nieuwe soorten liquiditeit, …) zijn die jaren nog onaangeroerd.
+- Zo zit elke soort markt (corona, oorlog, renteverhogingen, de goudrally van 2024) in beide helften.
+- Trades die over een maandgrens lopen, horen bij de maand waarin ze openen.
+- De eindtest blijft chronologisch: 2025–2026 is echt "de toekomst" voor alles wat we bedenken.
+- Extra eis: een effect moet in de meeste afzonderlijke jaren dezelfde kant op wijzen, niet alleen gemiddeld.
+
+Eerlijke kanttekening: van bouwsteen 1–3 hebben we 2020–2024 al gezien. Voor **nieuwe** varianten (H1/H4, nieuwe soorten liquiditeit, …) is de bevestigingshelft nog onaangeroerd.
 
 **Waarom oudere data belangrijk is:** een BOS op H4 komt maar ~40–75 keer per jaar per markt voor. Op 3 jaar verkenningsdata is dat te weinig om iets te bewijzen. Met H1/H4 vanaf bv. 2010 wordt dat 5 keer zoveel.
 
@@ -70,20 +77,20 @@ Eerlijke kanttekening: van bouwsteen 1–3 hebben we de jaren 2023–2024 al per
 ## 6. Bescherming tegen een valse edge (de poortjes)
 1. **Testregister:** elke combinatie die bekeken wordt, komt in een logboek met het aantal. Iedereen kan zien hoeveel er geprobeerd is.
 2. **Poort laag 1 → 2:** een gebeurtenis gaat alleen door als ze
-   - op **beide markten** dezelfde kant op wijst,
+   - **per markt** beoordeeld: een edge die alleen op goud of alleen op EURUSD werkt is toegestaan (beslissing Gitchi 10 okt 2026). Omdat dat de kans op een toevalstreffer verdubbelt, is de lat dan hoger: werkt het maar op één markt, dan richtwaarde t ≥ 3,5 in plaats van 3; werkt het op beide, dan telt dat als extra bewijs,
    - in **beide helften** van de verkenningsperiode,
    - de willekeurige basislijn verslaat met een marge die rekening houdt met het aantal tests (strenger naarmate we meer testen; richtwaarde t ≥ 3 in plaats van 2),
    - en een effect heeft dat **groter is dan de kosten** op die timeframe.
 3. **Buren:** de naburige instellingen (andere L, ander venster) moeten dezelfde kant op wijzen. Eén eenzaam topje telt niet.
-4. **Bevestiging 2023–2024:** hoogstens 5 kandidaten, elk één keer.
+4. **Bevestiging (even maanden 2020–2024):** hoogstens 5 kandidaten, elk één keer.
 5. **Eindtest 2025–2026:** één keer, met de succescriteria uit de spec.
 
 ## 7. Wat dit níet is
 - Geen dataverzameling tot er "iets" positief uitkomt. Als niets de poortjes haalt, is dat de uitkomst, en dat is waardevol: dan weten we dat deze concepten op deze markten geen edge hebben en verliezen we geen geld live.
 - Geen combinaties stapelen tot het past. Combinaties mogen pas tussen gebeurtenissen die elk apart al informatie tonen.
 
-## 8. Open vragen voor Gitchi
-1. Kan je uit MT5 **H1 en H4** (en liefst M15) exporteren **zo ver terug als het gaat** voor XAUUSD en EURUSD? Op dezelfde manier als de M1-export (venster Symbolen → tabblad Balken → timeframe kiezen → begindatum zo vroeg mogelijk → Opvragen → Exporteren).
-2. Akkoord met de opdeling 2020–2022 verkennen / 2023–2024 bevestigen / 2025–2026 eindtest?
-3. Mogen er extra markten bij **alleen als bewijs** (bv. GBPUSD, USDJPY, US30), ook al trade je ze niet?
-4. De echte swapwaarden uit MT5 (nog open).
+## 8. Stand van de vragen (10 okt 2026)
+1. Oudere H1/H4/M15-data: Gitchi komt hier later op terug.
+2. Opdeling: voorstel om-en-om per maand (zie §4) — wacht op akkoord.
+3. Extra markten alleen als bewijs: Gitchi kan de data regelen. Voorstel: XAGUSD (zilver), GBPUSD, USDJPY en een index (US500 of US30), op H1/H4/M15 zo ver terug als het gaat. M1 alleen voor markten die hij echt zou traden.
+4. Swap: niet nodig voor laag 1 (zonder kosten). Wel voor laag 2 op H1/H4, waar trades meerdere nachten openblijven (bv. 4 nachten × $0,40 op een SL van $15 ≈ 0,1R). Eén screenshot volstaat, liefst vóór laag 2.
