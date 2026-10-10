@@ -312,6 +312,7 @@ def baseline(bars: pd.DataFrame, a: np.ndarray, ev_k: np.ndarray, ev_d: np.ndarr
     """
     Willekeurige vergelijking: per gebeurtenis `per_event` candles uit `pool` (indexen) met hetzelfde
     uur (en, als `strata` gegeven is, dezelfde stratumwaarde), zelfde richting, instap op de volgende open.
+    Altijd precies per_event rijen per gebeurtenis, in dezelfde volgorde (NaN als er niets vergelijkbaars is).
     """
     rng = np.random.default_rng(seed)
     hours = bars.index.hour.to_numpy()
@@ -321,14 +322,16 @@ def baseline(bars: pd.DataFrame, a: np.ndarray, ev_k: np.ndarray, ev_d: np.ndarr
     for p in pool:
         groups.setdefault(key_all[p], []).append(p)
     groups = {g: np.array(v) for g, v in groups.items()}
-    bk, bd = [], []
+    bk, bd, ok = [], [], []
     for kk, dd in zip(ev_k, ev_d):
         g = groups.get(key_all[kk])
-        if g is None or len(g) == 0:
+        if g is None or len(g) == 0:                    # geen vergelijkbare candle: NaN-rijen
+            bk.extend([0] * per_event); bd.extend([dd] * per_event); ok.extend([False] * per_event)
             continue
         pick = rng.choice(g, size=per_event, replace=True)
-        bk.extend(pick); bd.extend([dd] * per_event)
+        bk.extend(pick); bd.extend([dd] * per_event); ok.extend([True] * per_event)
     out = measure(bars, a, np.array(bk, int), np.array(bd, int))
+    out.loc[~np.array(ok, bool), :] = np.nan
     out["k"] = bk; out["d"] = bd
     return out
 

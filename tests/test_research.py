@@ -160,3 +160,14 @@ def test_basislijn_zelfde_uur_en_richting():
     assert all(hours[k] == 10 for k in bl.k[:5]) and all(hours[k] == 10 for k in bl.k[5:])  # 10 en 34 = 10u
     assert list(bl.d) == [1] * 5 + [-1] * 5
     assert all(k in pool for k in bl.k)
+
+
+def test_basislijn_zonder_vergelijkbare_candle_geeft_nan_en_blijft_uitgelijnd():
+    rng = np.random.default_rng(3)
+    p = 100 + np.cumsum(rng.normal(0, 1, 300))
+    b = pd.DataFrame({"open": p, "high": p + 1, "low": p - 1, "close": p},
+                     index=pd.date_range("2024-01-01", periods=300, freq="1h"))
+    strata = np.array(["A"] * 300, dtype=object); strata[50] = "B"     # stratum B bestaat niet in de pool
+    bl = R.baseline(b, np.ones(300), np.array([10, 50]), np.array([1, 1]), np.arange(0, 40), strata=strata)
+    assert len(bl) == 10
+    assert bl.R21.iloc[:5].notna().all() and bl.R21.iloc[5:].isna().all()
