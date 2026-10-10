@@ -99,3 +99,29 @@ Controle: H1 uit het bestand en H1 gebouwd uit de M1-data komen voor 94–99% va
 2. Opdeling: akkoord, met 2025–2026 als eindtest (zie §4).
 3. Extra markten alleen als bewijs: ontvangen voor GBPUSD, XAGUSD en US500 (USDJPY nog niet).
 4. Swap EURUSD gemeten op Gitchi's trades (sep–okt 2026): long ≈ −€7/lot/nacht (≈ 0,8 pip, nu zo ingesteld), short ≈ +€1,4 tot +€3,8 (opbrengst, wordt bewust niet meegeteld → 0). Goud: geen gegevens, voorlopig $0,40/oz per nacht in beide richtingen als kost.
+
+## 9. Ronde 1 van laag 1 — vooraf vastgelegd (11 okt 2026, vóór enige meting)
+
+**Markten:** XAUUSD, EURUSD, GBPUSD, XAGUSD, US500. **Timeframes:** M15, H1, H4 (bestanden uit MT5; EURUSD-H4 gebouwd uit H1). **Data:** alleen de verkenningshelft (§4); alles vanaf 2025 is vooraf weggesneden.
+
+**Meting per gebeurtenis** (richting d, ATR14 van de gebeurtenis-candle, instap = open van de volgende candle):
+- **R21 (hoofdmaat):** een vaste "beugel" van TP +2 ATR en SL −1 ATR, hoogstens 48 candles; raakt één candle beide, dan telt de SL; niets geraakt → resultaat op candle 48. Uitgedrukt in R (1R = 1 ATR).
+- Nevenmaten: R11 (+1/−1 ATR), beweging na 4/12/24/48 candles, MFE/MAE over 24 candles.
+- **Basislijn:** per gebeurtenis 5 willekeurige candles uit de verkenningshelft van dezelfde markt en timeframe, met **hetzelfde uur** en dezelfde richting (en, bij een trendvariant, dezelfde trendstand). Edge = gemiddelde gebeurtenis − gemiddelde basislijn.
+- **Onzekerheid:** standaardfout gegroepeerd per kalenderweek (gebeurtenissen in dezelfde week zijn niet onafhankelijk).
+- **Kosten** per markt in R = (typische spread + 2 × slippage + commissie) / mediane ATR van die timeframe.
+
+**Gebeurtenissen (familie → varianten), swinglengte L = 1, 3, 5 waar van toepassing:**
+1. **BOS met de structuur mee** (setup-TF HH+HL, body voorbij de laatste swing): alle · displacement (body ≥ 1 ATR) · TF+1 mee · TF+1 én TF+2 mee.
+2. **CHoCH** (structuur LH+LL, body boven de laatste swing high; short gespiegeld): alle · displacement · **MSS** (displacement + FVG in de laatste 3 candles) · TF+1 mee met de nieuwe richting · met sweep in de 12 candles ervoor.
+3. **Sweeps (ommekeer):** swing-sweep (L) · vorige-dag high/low (M15, H1) · vorige-week high/low (H1, H4) · Azië-range high/low (servertijd 01–09u; M15, H1); telkens alle · TF+1 mee met de ommekeer.
+4. **FVG:** vorming met TF+1 mee · eerste retest van de rand binnen 12 candles met TF+1 mee (instap op de rand) · **inverse FVG** (close door de FVG binnen 24 candles → andere richting) · vorming zonder trendfilter.
+Hogere timeframes: M15 → H1, H4 · H1 → H4, D1 · H4 → D1, W1.
+
+**Poort naar laag 2 (alles moet kloppen):**
+- ≥ 100 gebeurtenissen in de verkenningshelft voor die markt;
+- edge op R21 met t ≥ 3,0 als minstens één andere markt dezelfde kant op wijst (t ≥ 1), anders t ≥ 3,5;
+- zelfde teken vóór 2020 en in de oneven maanden 2020–2024 (waar beide bestaan), en in de meerderheid van de jaren;
+- minstens 2 van de 3 waarden van L dezelfde kant op (waar L bestaat);
+- gemiddelde R21 min kosten ≥ +0,05R (of, bij een negatief effect, de omgekeerde trade).
+Alle rijen gaan in het testregister (`research/register_ronde1.csv`), ook wat niets oplevert.
