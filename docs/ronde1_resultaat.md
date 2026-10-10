@@ -46,3 +46,9 @@ H4 op FX is het enige terrein waar een kleine edge na kosten iets zou kunnen opl
 - **Exits onderzoeken** op de beste H4-aanwijzingen (MFE/MAE), maar alleen als nieuwe, vooraf vastgelegde test.
 - **Andere soorten edges, bekend uit onderzoek** buiten ICT/SMC: trendvolgen op D1 (momentum), carry, seizoens-/dag-van-de-week-effecten, opening-range-breakouts. Die hebben in de literatuur een beter trackrecord dan SMC-patronen.
 Elke ronde komt opnieuw in het testregister, zodat het totaal aantal pogingen zichtbaar blijft (nu: 615 in laag 1 + 48 combinaties in bouwsteen 1–3).
+
+## Aanvulling 11 okt 2026: met 1,5RR (wens Gitchi)
+Zelfde gebeurtenissen, beugel TP +1,5 ATR / SL −1 ATR (quitte zonder kosten bij 40% winrate). Register: `research/register_ronde1_rr15.csv` (nog eens 615 combinaties in het testregister).
+- **0 van 615 door de poort.** t ≥ 2: 3 keer; t ≤ −2: 70 keer, waarvan 61 op M15 (zelfde terugval als bij 2R).
+- Winrate per familie: M15 37–40%, H1 38–40%, H4 38–40%. Willekeurige momenten geven gemiddeld hetzelfde (−0,01R).
+- Conclusie: de RR verandert de winrate, niet de verwachting. Zonder voorsprong in de instap levert geen enkele RR iets op.

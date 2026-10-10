@@ -1,7 +1,8 @@
 """
 Laag 1, ronde 1: poort toepassen en het testregister schrijven (docs/onderzoeksplan_edge.md §9).
 
-Gebruik: python -m scripts.ronde1_poort <events_ronde1.pkl> <register.csv>
+Gebruik: python -m scripts.ronde1_poort <events_ronde1.pkl> <register.csv> [R21|R15]
+(kolomnamen R21/basis_R21 in het register bevatten de gekozen maat; zie kolom 'maat')
 """
 import sys
 
@@ -27,7 +28,9 @@ VARIANTS = {
 MIN_N = 100
 
 
-def rows_for(ev):
+def rows_for(ev, metric="R21"):
+    """metric = "R21" (TP 2 ATR) of "R15" (TP 1,5 ATR); SL is altijd 1 ATR."""
+    bcol = {"R21": "base", "R15": "base15"}[metric]
     ev = ev.copy()
     ev["mss"] = ev["disp"].astype(bool) & ev["fvg3"].astype(bool)
     ev["sweep"] = ev["sweep"].fillna(False).astype(bool)
@@ -38,15 +41,16 @@ def rows_for(ev):
     for (mkt, tf, fam, L), g in ev.groupby(["market", "tf", "fam", ev["L"].fillna(0)], sort=False):
         for vname, col, btag in VARIANTS[fam]:
             s = g if col is None else g[g[col].astype(bool)]
-            s = s[s.R21.notna() & s["base" + btag].notna()]
-            diff = (s.R21 - s["base" + btag]).to_numpy()
+            s = s[s[metric].notna() & s[bcol + btag].notna()]
+            diff = (s[metric] - s[bcol + btag]).to_numpy()
             m, se = clustered_t(diff, s.week.to_numpy())
             pre = diff[s.jaar.to_numpy() < 2020]; post = diff[s.jaar.to_numpy() >= 2020]
             yrs = pd.Series(diff).groupby(s.jaar.to_numpy()).agg(["mean", "size"])
             yrs = yrs[yrs["size"] >= 10]
             out.append({
                 "markt": mkt, "tf": tf, "familie": fam, "L": int(L) if L else None, "variant": vname,
-                "n": len(s), "R21": s.R21.mean(), "basis_R21": s["base" + btag].mean(), "edge": m,
+                "n": len(s), "R21": s[metric].mean(), "basis_R21": s[bcol + btag].mean(), "edge": m,
+                "maat": metric, "winrate": float((s[metric] >= {"R21": 2.0, "R15": 1.5}[metric]).mean()) if len(s) else np.nan,
                 "se": se, "t": m / se if se and se > 0 else np.nan,
                 "R11": s.R11.mean(), "edge_R11": (s.R11 - s["base11" + btag]).mean(),
                 "fwd12_atr": s.fwd12.mean(), "kosten_R": s.cost_R.iloc[0] if len(s) else np.nan,
@@ -87,9 +91,9 @@ def gate(reg):
     return reg
 
 
-def main(evpath, regpath):
+def main(evpath, regpath, metric="R21"):
     ev = pd.read_pickle(evpath)
-    reg = gate(rows_for(ev))
+    reg = gate(rows_for(ev, metric))
     reg.to_csv(regpath, index=False, float_format="%.4f")
     print(f"{len(reg)} combinaties getest; {int(reg.poort.sum())} door de poort")
     cols = ["markt", "tf", "familie", "L", "variant", "n", "R21", "basis_R21", "edge", "t", "netto_na_kosten",
@@ -101,4 +105,4 @@ def main(evpath, regpath):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    main(*sys.argv[1:4])

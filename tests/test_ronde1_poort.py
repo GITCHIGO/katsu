@@ -60,3 +60,16 @@ def test_negatief_effect_gebruikt_omgekeerde_trade():
     assert r.richting == "omgekeerd"
     assert r.netto_na_kosten == 0.25 - 0.10          # omgekeerde trade: −R11 − kosten
     assert bool(r.poort)
+
+
+def test_rows_for_gebruikt_de_gekozen_beugel():
+    from scripts.ronde1_poort import rows_for
+    t = pd.date_range("2018-01-01", periods=4, freq="7D")
+    ev = pd.DataFrame({"market": "XAUUSD", "tf": "H1", "fam": "FVG_inverse", "L": np.nan, "k": range(4), "d": 1,
+                       "time": t, "R21": [2, -1, 2, -1], "R15": [1.5, 1.5, -1, -1], "R11": [1, 1, -1, 1],
+                       "base": 0.0, "base15": 0.5, "base11": 0.0, "fwd12": 0.0, "cost_R": 0.1,
+                       "disp": False, "fvg3": False, "sweep": np.nan, "htf1_mee": False, "htf2_mee": False})
+    r21 = rows_for(ev, "R21").iloc[0]
+    r15 = rows_for(ev, "R15").iloc[0]
+    assert (r21.R21, r21.edge, r21.winrate) == (0.5, 0.5, 0.5)
+    assert (r15.R21, r15.basis_R21, r15.edge, r15.winrate, r15.maat) == (0.25, 0.5, -0.25, 0.5, "R15")

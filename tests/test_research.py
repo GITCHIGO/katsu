@@ -28,6 +28,7 @@ UP_ROWS = [(100, 100, 100, 100), (100, 100.5, 99.5, 100.2), (100.2, 101.2, 99.8,
 def test_beugel_long_handberekend():
     m = R.measure(bars_from(UP_ROWS), ONE, np.array([0]), np.array([1]), max_bars=3).iloc[0]
     assert (m.R21, m.R11) == (2.0, 1.0)
+    assert m.R15 == 1.5                         # +1,5 ATR pas op candle 3 (mee 2,1; candle 2 maar 1,2)
     assert m.mfe24 == pytest.approx(2.1) and m.mae24 == pytest.approx(0.5)
 
 

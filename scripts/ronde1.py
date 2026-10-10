@@ -115,6 +115,7 @@ def main(folder, outdir):
                 bl = R.baseline(bars, a, k, d, pool, strata=strata, per_event=5, seed=11)
                 ev["base" + tag] = np.nanmean(bl.R21.to_numpy().reshape(-1, 5), axis=1)
                 ev["base11" + tag] = np.nanmean(bl.R11.to_numpy().reshape(-1, 5), axis=1)
+                ev["base15" + tag] = np.nanmean(bl.R15.to_numpy().reshape(-1, 5), axis=1)
             ev["market"], ev["tf"] = sym, tfn
             ev["cost_R"] = COST[sym] / np.nanmedian(a[explore])
             allev.append(ev)

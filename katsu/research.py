@@ -259,7 +259,7 @@ def measure(bars: pd.DataFrame, a: np.ndarray, k: np.ndarray, d: np.ndarray,
             max_bars: int = 48) -> pd.DataFrame:
     """
     Meet per gebeurtenis (alles in ATR van candle k, in de richting d):
-    R21 / R11 (beugel TP 2 of 1 ATR, SL 1 ATR, hoogstens max_bars candles, SL eerst bij twijfel),
+    R21 / R15 / R11 (beugel TP 2, 1,5 of 1 ATR, SL 1 ATR, hoogstens max_bars candles, SL eerst bij twijfel),
     fwd_h (close na h candles t.o.v. de instap), mfe24 / mae24.
     Zonder entry_bar: instap = open van candle k+1 (en die candle telt volledig mee).
     Met entry_bar/entry_price (limiet): op de instapcandle telt alleen de SL.
@@ -267,7 +267,7 @@ def measure(bars: pd.DataFrame, a: np.ndarray, k: np.ndarray, d: np.ndarray,
     """
     o, h, lo, c = _arrays(bars)
     n = len(c)
-    res = np.full((len(k), 4 + len(HORIZONS)), np.nan)
+    res = np.full((len(k), 5 + len(HORIZONS)), np.nan)
     for i in range(len(k)):
         kk, dd, at = int(k[i]), int(d[i]), a[int(k[i])]
         if not np.isfinite(at) or at <= 0:
@@ -286,7 +286,7 @@ def measure(bars: pd.DataFrame, a: np.ndarray, k: np.ndarray, d: np.ndarray,
         fav = fav / at; adv = adv / at
         last = dd * (cc[-1] - ep) / at
         row = []
-        for tp in (2.0, 1.0):
+        for tp in (2.0, 1.5, 1.0):
             sl_hit = adv >= 1.0
             tp_hit = fav >= tp
             if skip_first:
@@ -303,7 +303,7 @@ def measure(bars: pd.DataFrame, a: np.ndarray, k: np.ndarray, d: np.ndarray,
         row += [fav[:w].max(), adv[:w].max()]
         row += [dd * (cc[hz - 1] - ep) / at if hz <= max_bars else np.nan for hz in HORIZONS]
         res[i] = row
-    cols = ["R21", "R11", "mfe24", "mae24"] + [f"fwd{hz}" for hz in HORIZONS]
+    cols = ["R21", "R15", "R11", "mfe24", "mae24"] + [f"fwd{hz}" for hz in HORIZONS]
     return pd.DataFrame(res, columns=cols)
 
 
