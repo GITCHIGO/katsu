@@ -81,3 +81,17 @@ Varianten nu: trend (met/zonder) × geldigheid (tot ongeldig / 24 uur) = **4 per
 Aantal setups: ~1,2–1,5 per dag per markt (was ~5). Mediane SL ≈ 1,6 ATR.
 Opgelet: deze regels zijn afgeleid uit 10 voorbeelden (+ 3 screenshots); het risico op "regels die toevallig
 bij deze 10 passen" is reëel. Daarom telt alleen de bevestigingshelft als bewijs.
+
+## 10. Testplan, vooraf vastgelegd (12 okt 2026, vóór er één resultaat bekeken is)
+Gitchi bedoelde met "61,8%" waarschijnlijk de fib vanaf de verre kant van het gat (= 38,2% diep; voorbeeld 4 van
+versie 2). Beide worden getest en vergeleken:
+| Keuze | Waarden |
+|---|---|
+| Entry-diepte in het gat (vanaf de rand waar de koers eerst komt) | **38,2%** · **61,8%** |
+| Trend | met trendspotter (H1 én H4 mee) · zonder |
+| Geldigheid order | tot ongeldig (vangnet 5 handelsdagen) · max 24 uur |
+= 8 varianten × 3 markten (EURUSD, GBPUSD, XAUUSD) = **24 combinaties**, alleen de verkenningshelft.
+Uitvoering per markt (één positie of lopende order per markt, dagstop −2R), op M15-candles, maximale looptijd
+14 kalenderdagen, alle kosten. Register: `research/register_gfvg.csv`. Poort zoals §8.
+Ter info (geen poort): resultaat vóór kosten, vulgraad, annuleringen, long/short apart, per jaar.
+Wat er ook uitkomt: een variant die de poort haalt, moet daarna nog standhouden op de bevestigingshelft.

@@ -169,3 +169,14 @@ def test_tp_oude_high_dichterbij_dan_2r():
     d = m1([(100, 100.5, 99.8, 100.2), (100.2, 100.3, 99.3, 99.6), (99.6, 101.5, 99.5, 101.2)])
     tr = simulate(plan(tp_price=101.0, cancel_price=101.0, max_rr=2.0), d, INS)
     assert tr.tp == 101.0 and tr.r_gross == pytest.approx(1.5 / 1.7)
+
+
+def test_entry_38_2_procent_diep():
+    b = bars(BASE)
+    (s,) = longs(BASE)
+    p = make_gfvg_plan(s, b, [1.0] * len(b), "24u", "EURUSD", entry_frac=0.382)
+    assert p.limit_price == pytest.approx(102 - 0.382)               # 101,618
+    bm = bars(BASE, mirror=True)
+    (t,) = [x for x in detect_gfvg(bm, [1.0] * len(bm), L=1) if x.direction == "SHORT"]
+    q = make_gfvg_plan(t, bm, [1.0] * len(bm), "24u", "EURUSD", entry_frac=0.382)
+    assert q.limit_price == pytest.approx(98 + 0.382)                # gespiegeld: 98,382
