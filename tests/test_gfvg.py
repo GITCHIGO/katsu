@@ -89,13 +89,23 @@ def test_orderplan():
     (s,) = longs(BASE)
     a = [1.0] * len(b)
     t_sig = b.index[10] + pd.Timedelta("15min")
-    p = make_gfvg_plan(s, b, a, "24u", "EURUSD", entry_frac=0.5)
-    assert p.signal_time == t_sig and p.kind == "limit" and p.limit_price == 101.5
+    # standaard (keuze Gitchi): entry 61,8% in het gat = 102 − 0,618 × 1 = 101,382
+    # geplande SL = 98 − 0,1 = 97,9 · risico 3,482 · 2R-niveau = 101,382 + 6,964 = 108,346 < oude high 110
+    p = make_gfvg_plan(s, b, a, "24u", "EURUSD")
+    assert p.signal_time == t_sig and p.kind == "limit" and p.limit_price == pytest.approx(101.382)
     assert p.valid_until == t_sig + pd.Timedelta(hours=24)
-    assert p.tp_price == 110 and p.cancel_price == 110 and p.anchor == 98 and p.max_cost_r == 0.2
-    q = make_gfvg_plan(s, b, a, "ongeldig", "EURUSD")
-    assert q.limit_price == 102
+    assert p.tp_price == 110 and p.max_rr == 2.0 and p.cancel_price == pytest.approx(108.346)
+    assert p.anchor == 98 and p.max_cost_r == 0.2
+    q = make_gfvg_plan(s, b, a, "ongeldig", "EURUSD", entry_frac=0.0, max_rr=None)
+    assert q.limit_price == 102 and q.cancel_price == 110 and q.max_rr is None
     assert q.valid_until == b.index[-1] + pd.Timedelta("15min")         # reeks korter dan 480 candles
+
+
+def test_orderplan_short_plafond():
+    b = bars(BASE, mirror=True)
+    (s,) = [x for x in detect_gfvg(b, [1.0] * len(b), L=1) if x.direction == "SHORT"]
+    p = make_gfvg_plan(s, b, [1.0] * len(b), "24u", "EURUSD")
+    assert p.limit_price == pytest.approx(98.618) and p.cancel_price == pytest.approx(200 - 108.346)
 
 
 # ---------------- uitvoering: vaste TP en annulering ----------------
@@ -146,3 +156,16 @@ def test_portefeuille_annulering_geeft_de_markt_vrij():
                    T0 + pd.Timedelta(minutes=5), tp_price=105.0, cancel_price=105.0)
     out = run_portfolio([p1, p2], {"XAUUSD": d}, {"XAUUSD": INS})
     assert list(out.status) == ["geannuleerd", "gesloten"]
+
+
+def test_tp_plafond_2r():
+    # gevuld op 99,50 · SL 97,80 · risico 1,70 · oude high 105 ligt verder dan 2R (99,50 + 3,40 = 102,90)
+    d = m1([(100, 100.5, 99.8, 100.2), (100.2, 100.3, 99.3, 99.6), (99.6, 103.0, 99.5, 102.95)])
+    tr = simulate(plan(tp_price=105.0, cancel_price=102.9, max_rr=2.0), d, INS)
+    assert tr.tp == 102.9 and tr.exit_reason == "TP" and tr.r_gross == pytest.approx(2.0)
+
+
+def test_tp_oude_high_dichterbij_dan_2r():
+    d = m1([(100, 100.5, 99.8, 100.2), (100.2, 100.3, 99.3, 99.6), (99.6, 101.5, 99.5, 101.2)])
+    tr = simulate(plan(tp_price=101.0, cancel_price=101.0, max_rr=2.0), d, INS)
+    assert tr.tp == 101.0 and tr.r_gross == pytest.approx(1.5 / 1.7)

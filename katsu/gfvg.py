@@ -5,9 +5,10 @@ LONG (SHORT exact gespiegeld):
 - De MIDDELSTE candle van de FVG (candle 2) sluit boven de laatste bevestigde, nog intacte swing high.
 - Bullish FVG: low(candle 3) > high(candle 1); het gat moet minstens MIN_GAP_ATR × ATR groot zijn.
 - Candle 3 is een "volle" candle: body ≥ MIN_BODY3 × range (geen wick-candle).
-- Entry = limiet in het gat: entry_frac 0 = bovenrand (eerste aanraking), 0,5 = midden.
+- Entry = limiet in het gat op ENTRY_FRAC (61,8%) vanaf de rand waar de koers eerst komt (keuze Gitchi).
 - SL-basis = laagste low van het order block (laatste bearish candle tussen de oorsprong en candle 1) t/m candle 2.
-- TP = laagste bevestigde swing high boven de top van het been die sindsdien niet geraakt is.
+- TP = laagste bevestigde swing high boven de top van het been die sindsdien niet geraakt is,
+  maar nooit verder dan MAX_RR × risico (wat het dichtst ligt; keuze Gitchi).
 
 Intern werkt alles in "LONG-ruimte": voor SHORT worden de prijzen gespiegeld (high <-> −low, open/close × −1).
 Alleen gesloten candles; swings pas na bevestiging.
@@ -27,6 +28,9 @@ MIN_GAP_ATR = 0.5         # gat minstens een halve ATR ("niet te krap")
 MIN_BODY3 = 0.25          # candle 3: body minstens 25% van de range ("geen wick-candle")
 VALID_BARS = 480          # 5 handelsdagen op M15
 MAX_COST_R = 0.2
+ENTRY_FRAC = 0.618        # 61,8% in het gat
+MAX_RR = 2.0              # TP-plafond
+SL_BUFFER_ATR = 0.1       # zelfde buffer als de uitvoering (zonder spread) voor het geplande annuleerniveau
 
 
 @dataclass(frozen=True)
@@ -115,8 +119,13 @@ def detect_gfvg(bars: pd.DataFrame, atr_values, L: int = L_STRUCT, min_gap: floa
 
 
 def make_gfvg_plan(s: GfvgSetup, bars: pd.DataFrame, atr_values, validity: str, market: str,
-                   entry_frac: float = 0.0, tf: str = "15min") -> OrderPlan | None:
-    """Orderplan (spec v0.4 §5). validity = 'ongeldig' (5 handelsdagen) of '24u'. None = geen TP."""
+                   entry_frac: float = ENTRY_FRAC, max_rr: float | None = MAX_RR,
+                   tf: str = "15min") -> OrderPlan | None:
+    """
+    Orderplan (spec v0.4 §5). validity = 'ongeldig' (5 handelsdagen) of '24u'. None = geen TP.
+    Annuleerniveau = de geplande TP: de oude high/low, of het 2R-niveau als dat dichterbij ligt
+    (gepland met de SL-basis − 0,1 ATR; de echte TP rekent de uitvoering na de vulling uit met de echte spread).
+    """
     if s.tp is None:
         return None
     step = pd.Timedelta(tf)
@@ -126,5 +135,13 @@ def make_gfvg_plan(s: GfvgSetup, bars: pd.DataFrame, atr_values, validity: str, 
     else:
         until = bars.index[min(s.signal_index + VALID_BARS, len(bars) - 1)] + step
     a = float(np.asarray(atr_values)[s.fvg_index])
-    return OrderPlan(s.direction, t_sig, "limit", s.anchor, a, s.entry(entry_frac), until, market=market,
-                     max_cost_r=MAX_COST_R, tp_price=s.tp, cancel_price=s.tp)
+    entry = s.entry(entry_frac)
+    cancel = s.tp
+    if max_rr is not None:
+        sgn = 1.0 if s.direction == "LONG" else -1.0
+        risk = sgn * (entry - (s.anchor - sgn * SL_BUFFER_ATR * a))
+        cap = entry + sgn * max_rr * risk
+        if sgn * (cancel - cap) > 0:
+            cancel = cap
+    return OrderPlan(s.direction, t_sig, "limit", s.anchor, a, entry, until, market=market,
+                     max_cost_r=MAX_COST_R, tp_price=s.tp, cancel_price=cancel, max_rr=max_rr)

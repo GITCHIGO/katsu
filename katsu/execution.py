@@ -82,6 +82,7 @@ class OrderPlan:
     max_cost_r: float | None = None   # kostenplafond (spec v0.2 §4); None = geen plafond
     tp_price: float | None = None     # vaste TP-prijs (spec v0.4: oude high); None = rr × risk
     cancel_price: float | None = None # limiet/stop wordt geannuleerd als de koers dit niveau eerst raakt
+    max_rr: float | None = None       # met tp_price: TP nooit verder dan max_rr × risk (het dichtste telt)
 
 
 @dataclass
@@ -203,7 +204,10 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     if risk < ins.min_sl_atr * plan.atr:
         return Trade(plan.direction, plan.signal_time, "sl_te_klein", d.t[fi], fill, sl, None, risk)
     if plan.tp_price is not None:
-        tp = _round_tick(plan.tp_price, ins.tick)
+        tp = plan.tp_price
+        if plan.max_rr is not None and s * (tp - (fill + s * plan.max_rr * risk)) > 0:
+            tp = fill + s * plan.max_rr * risk          # oude high ligt verder dan het plafond
+        tp = _round_tick(tp, ins.tick)
         if s * (tp - fill) <= 0:                        # TP ligt niet voorbij de vulling: geen trade
             return Trade(plan.direction, plan.signal_time, "tp_ongeldig", d.t[fi], fill, sl, tp, risk)
     else:

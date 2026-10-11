@@ -1,6 +1,6 @@
 # KATSU — spec v0.4: Gitchi-FVG (FVG volgens Gitchi's eigen principes)
 
-Datum: 11 oktober 2026 · Status: **concept, goedgekeurd in chat (11 okt 2026), nog niet bevroren**
+Datum: 11 oktober 2026 · Status: **concept versie 2 (na Gitchi's feedback op 10 voorbeelden), nog niet bevroren**
 Bron: Gitchi's uitleg en screenshots (EURUSD M15, sep–okt 2026). Die screenshots liggen in de eindtestperiode;
 de dagen 29–30/9, 21–22/9, 3/9 en 6/10/2026 worden daarom uit de eindtest gehouden.
 
@@ -64,3 +64,20 @@ pas daarna de eenmalige eindtest.
 n ≥ 100, gemiddeld netto ≥ +0,10R, t ≥ 2,0 (geclusterd per week), positief vóór 2020 én 2020–24,
 meer dan de helft van de jaren positief. Met 8 varianten × 3 markten = 24 combinaties is één "toevalstreffer"
 met t ≈ 2 te verwachten; daarom telt pas de bevestigingshelft.
+
+## 9. Versie 2 (11 okt 2026, na Gitchi's oordeel over 10 voorbeelden) — vervangt §3.2–3.4, §4 en §5 waar nodig
+Gitchi's oordeel per voorbeeld werd gemeten; de regels hieronder scheiden zijn ja's van zijn nee's:
+| Regel | Waarom (zijn woorden) | Meting op de 10 voorbeelden |
+|---|---|---|
+| De **middelste candle** (candle 2) van de FVG *sluit* voorbij de laatste intacte swing high/low | "bij mij is de regel dat de middelste candle de vorige low of high moet doorbreken" | Bij alle ja/misschien-voorbeelden waar, bij 5 van 6 nee's niet |
+| Gat ≥ **0,5 ATR** | "veel te krap", "precies een muntworp" | Nee's 0,1–0,4 ATR, ja's 0,7–1,8 ATR |
+| Candle 3: body ≥ **25%** van de range | "een soort wick i.p.v. een deftige volle candle" | Het afgewezen voorbeeld: 11%; ja's 28–53% |
+| Entry op **61,8%** in het gat (vanaf de rand waar de koers eerst komt) | "entry veel te laag", keuze Gitchi | — |
+| TP = oude high/low zoals §5, maar **nooit verder dan 2R** (het dichtste telt) | "TP veeeel te ver", keuze Gitchi | — |
+Gevolg: elke breuk geeft precies één FVG, dus de keuze "eerste/laatste" vervalt. Annuleerniveau = de geplande TP
+(oude high/low of het 2R-niveau). Goud krijgt geen aparte regel ("voorzichtig", maar voorbeeld 7 wel genomen);
+goud wordt in de uitslag apart bekeken.
+Varianten nu: trend (met/zonder) × geldigheid (tot ongeldig / 24 uur) = **4 per markt, 12 in totaal**.
+Aantal setups: ~1,2–1,5 per dag per markt (was ~5). Mediane SL ≈ 1,6 ATR.
+Opgelet: deze regels zijn afgeleid uit 10 voorbeelden (+ 3 screenshots); het risico op "regels die toevallig
+bij deze 10 passen" is reëel. Daarom telt alleen de bevestigingshelft als bewijs.
