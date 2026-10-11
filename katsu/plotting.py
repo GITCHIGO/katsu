@@ -233,3 +233,41 @@ def plot_example_trade(ax, bars: pd.DataFrame, k: int, trade: dict, title: str, 
     ax.tick_params(axis="y", labelsize=7)
     ax.set_title(title, fontsize=9)
     ax.grid(alpha=0.2)
+
+
+# ---------------- Positie duidelijk tekenen (zoals de position-tool in TradingView) ----------------
+
+def plot_position(ax, bars: pd.DataFrame, k: int, d: int, entry_i: int, ep: float, sl: float, tp: float,
+                  exit_i: int, exit_px: float, result: str, title: str, gap=None,
+                  server_offset_h: int = 1, before: int = 20, after: int = 8) -> None:
+    """
+    Groen vlak = van entry tot TP (winstzone), rood vlak = van entry tot SL (verlieszone), met prijslabels.
+    Zwarte ster = instap, ruit = uitstap. `gap` = (onder, boven) van de FVG (blauw vlak op de 3 candles).
+    """
+    a = max(k - before, 0)
+    b = min(exit_i + after, len(bars) - 1)
+    w = bars.iloc[a:b + 1]
+    x = _candles(ax, w)
+
+    def X(i): return i - a
+    if gap is not None:
+        ax.add_patch(Rectangle((X(k - 2) - 0.4, gap[0]), 2.8, gap[1] - gap[0], color="#1565c0", alpha=0.30,
+                               label="FVG"))
+    x0, x1 = X(entry_i) - 0.4, X(exit_i) + 0.4
+    ax.add_patch(Rectangle((x0, min(ep, tp)), x1 - x0, abs(tp - ep), color="#2e7d32", alpha=0.18, label="winstzone (TP)"))
+    ax.add_patch(Rectangle((x0, min(ep, sl)), x1 - x0, abs(ep - sl), color="#c62828", alpha=0.18, label="verlieszone (SL)"))
+    for y, col, txt in ((tp, "#2e7d32", f"TP {tp:.5g}"), (ep, "black", f"entry {ep:.5g}"), (sl, "#c62828", f"SL {sl:.5g}")):
+        ax.hlines(y, x0, x1, colors=col, linewidth=1.6)
+        ax.text(x1 + 0.3, y, txt, va="center", fontsize=8, color=col, fontweight="bold")
+    ax.scatter([X(entry_i)], [ep], marker="*", s=160, color="black", zorder=6, label="instap")
+    ax.scatter([X(exit_i)], [exit_px], marker="D", s=70, color="#2e7d32" if result == "TP" else
+               ("#c62828" if result == "SL" else "#757575"), zorder=6, label=f"uitstap ({result})")
+    ax.scatter([X(k)], [w["close"].iloc[X(k)]], marker="o", s=80, facecolors="none", edgecolors="#ef6c00",
+               linewidths=2, zorder=5, label="FVG-candle (signaal)")
+    step = max(len(x) // 8, 1)
+    lab = (w.index - pd.Timedelta(hours=server_offset_h)).strftime("%d/%m/%y %H:%M")
+    ax.set_xticks(x[::step]); ax.set_xticklabels(lab[::step], rotation=30, fontsize=7)
+    ax.set_xlim(-1, len(x) + 4)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.set_title(title, fontsize=10)
+    ax.grid(alpha=0.2)

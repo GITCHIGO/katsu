@@ -48,3 +48,14 @@ def test_voorbeeldtrade_wordt_getekend(tmp_path):
     plot_example_trade(ax, bars, 10, trade, "test", {"level": (106, 6), "anchor": (100, 8), "gap": (101, 102, 2)})
     fig.savefig(tmp_path / "t.png"); plt.close(fig)
     assert (tmp_path / "t.png").stat().st_size > 1000
+
+
+def test_positie_wordt_getekend(tmp_path):
+    import matplotlib.pyplot as plt
+    from tests.test_fvg import BASE as FB, make as fmake
+    from katsu.plotting import plot_position
+    bars = fmake(FB)
+    fig, ax = plt.subplots()
+    plot_position(ax, bars, 2, 1, 3, 104.5, 103.5, 106.0, 4, 103.5, "SL", "test", gap=(101, 102))
+    fig.savefig(tmp_path / "p.png"); plt.close(fig)
+    assert (tmp_path / "p.png").stat().st_size > 1000
