@@ -117,6 +117,7 @@ def choch_events(bars: pd.DataFrame, L: int, sweep_window: int = 12) -> pd.DataF
     """
     CHoCH: de structuur op de setup-timeframe is dalend (laatste 2 highs én lows dalend) en een candle
     sluit met de body boven de laatste bevestigde swing high (nog intact) -> LONG. Short gespiegeld.
+    Kolommen `level` / `level_index`: de gebroken swing (prijs en positie).
     Kolom `sweep`: werd in de `sweep_window` candles ervoor een (bevestigde, intacte) swing low
     geprikt met een wick en sloot die candle erboven?
     """
@@ -146,8 +147,8 @@ def choch_events(bars: pd.DataFrame, L: int, sweep_window: int = 12) -> pd.DataF
                 kl = np.searchsorted(lc, q - 1, side="right")
                 if kl > 0 and ll[q] < lp[kl - 1] and cc[q] > lp[kl - 1]:
                     swept = True; break
-            out.append((j, direction, swept))
-    df = pd.DataFrame(out, columns=["k", "d", "sweep"])
+            out.append((j, direction, swept, hp[kh - 1] * direction, int(hi[kh - 1])))
+    df = pd.DataFrame(out, columns=["k", "d", "sweep", "level", "level_index"])
     return df.sort_values("k").reset_index(drop=True)
 
 

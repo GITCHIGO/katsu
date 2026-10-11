@@ -70,6 +70,7 @@ def test_choch_met_sweep_handscenario():
     longs = ev[ev.d == 1]
     assert list(longs.k) == [8]                 # close 114 boven de lower high 113
     assert bool(longs.sweep.iloc[0])            # candle 6 prikte onder swing low 103 en sloot erboven
+    assert (longs.level.iloc[0], longs.level_index.iloc[0]) == (113, 3)   # gebroken lower high
 
 
 def test_bos_events_hergebruikt_detect_bos_zonder_filter():

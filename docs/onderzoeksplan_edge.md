@@ -125,3 +125,25 @@ Hogere timeframes: M15 → H1, H4 · H1 → H4, D1 · H4 → D1, W1.
 - minstens 2 van de 3 waarden van L dezelfde kant op (waar L bestaat);
 - gemiddelde R21 min kosten ≥ +0,05R (of, bij een negatief effect, de omgekeerde trade).
 Alle rijen gaan in het testregister (`research/register_ronde1.csv`), ook wat niets oplevert.
+
+## 10. Laag 2 voor de beste H4-aanwijzingen — vooraf vastgelegd (11 okt 2026, vóór enige meting)
+Ronde 1 leverde niets door de poort. Om niets te missen door de vaste ATR-beugel, gaan de beste H4-aanwijzingen toch door laag 2, met echte regels.
+
+**Selectieregel (objectief):** H4, edge > 0, t ≥ 1,5 (bij 2R of 1,5R), n ≥ 100, en positief na kosten. Dat geeft 6 kandidaten, allemaal forex:
+1. GBPUSD · BOS L1 · TF+1 (D1) mee
+2. EURUSD · CHoCH L3 · alle
+3. EURUSD · CHoCH L3 · displacement
+4. EURUSD · CHoCH L3 · TF+1 (D1) mee
+5. GBPUSD · CHoCH L5 · alle
+6. GBPUSD · FVG-vorming · TF+1 (D1) mee
+
+**Regels:**
+- Instap: marktorder op de open van de volgende H4-candle.
+- SL op de structuur − buffer (spread + 0,1 × ATR14 H4): BOS → laatste bevestigde higher low; CHoCH → laagste low tussen de gebroken swing high en de CHoCH-candle; FVG → laagste low van de drie FVG-candles (short gespiegeld).
+- **TP 1,5R** (Gitchi's RR, hoofdmaat); 2R alleen ter info.
+- Minimale SL 1 × ATR, kostenplafond 0,2R, trades lopen tot SL/TP, swap per nacht, 1 positie per markt, dagstop −2R.
+- Uitvoering gecontroleerd op **M15-candles** (fijnste data vanaf 2010); raakt een M15-candle SL en TP, dan telt de SL.
+- Kosten: EURUSD zoals ingesteld (swap long 0,8 pip, short 0); GBPUSD: min. spread 0,3 pip, slippage 0,3 pip, commissie 0,8 pip, swap 0,8 pip in beide richtingen (voorzichtig, niet gemeten).
+- Alleen gebeurtenissen in de verkenningshelft.
+
+**Poort naar de bevestigingshelft:** ≥ 100 trades, gemiddeld ≥ +0,10R netto bij 1,5R, t ≥ 2,0, positief vóór 2020 én in 2020–2024 (oneven maanden), meerderheid van de jaren positief. Wat erdoor komt, wordt één keer getest op de even maanden 2020–2024.
