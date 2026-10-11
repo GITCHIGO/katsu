@@ -147,3 +147,32 @@ Ronde 1 leverde niets door de poort. Om niets te missen door de vaste ATR-beugel
 - Alleen gebeurtenissen in de verkenningshelft.
 
 **Poort naar de bevestigingshelft:** ≥ 100 trades, gemiddeld ≥ +0,10R netto bij 1,5R, t ≥ 2,0, positief vóór 2020 én in 2020–2024 (oneven maanden), meerderheid van de jaren positief. Wat erdoor komt, wordt één keer getest op de even maanden 2020–2024.
+
+## 11. Ronde 2 — vooraf vastgelegd (11 okt 2026, vóór enige meting)
+Bronnen: het ICT-boek dat Gitchi aanleverde (*ICT 2022 Mentorship — Full ICT Day Trading Model*, LumiTraders; samengevat in `docs/ict_boek_samenvatting.md`) en bekende niet-ICT-effecten.
+**Tijd:** de server van IC Markets = New York + 7 uur, het hele jaar (gecontroleerd: de week opent altijd om 00:00 server; US500 opent om 16:30 server = 09:30 NY). Alle ICT-tijden hieronder in NY-tijd met servertijd erbij.
+**Data:** alleen de verkenningshelft (§4); M15 voor de intraday-modellen, D1 gebouwd uit H1.
+
+### A. ICT-tijdmodellen (nieuw t.o.v. ronde 1: vaste tijdvensters, sessieniveaus, dagbias)
+Niveaus per dag: Azië-range 20:00–00:00 NY (03–07 server) · midnight open = open om 00:00 NY (07:00 server) · London-range 02:00–05:00 NY (09–12 server) · ADR5 = gemiddelde dagrange van de 5 vorige dagen.
+**Dagbias (boek H12):** gisteren boven de high van eergisteren geweest maar eronder gesloten → bias SHORT vandaag; spiegelbeeld → LONG; anders geen bias.
+1. **London Judas:** tussen 02:00–05:00 NY (09–12 server) de eerste M15-candle die onder de Azië-low prikt en erboven sluit → LONG (spiegel: SHORT). SL = low van die candle − buffer.
+   Varianten: alle · met dagbias mee · smalle Azië-range (< 0,3 × ADR5) · ma–wo · smal + bias · SMT (alleen EURUSD/GBPUSD: de andere munt maakte in hetzelfde venster géén nieuwe Azië-low).
+2. **Silver Bullet:** liquiditeit = London-high/low. Tussen 09:30–10:00 NY (16:30–17:00 server) een sweep ervan (wick erdoor, close terug); daarna tussen 10:00–11:00 NY (17–18 server) de eerste M15-FVG in de tegenrichting → limiet op het midden van de FVG (geldig tot 11:00 NY). SL = extreme van de sweep − buffer. Varianten: alle · met dagbias mee.
+3. **Monday range:** di–vr, de eerste H1-candle die boven de maandag-high prikt en eronder sluit → SHORT (spiegel LONG). SL = high van die candle + buffer. Varianten: alle · met dagbias mee.
+4. **Dagbias als trade:** bij bias SHORT: short op de midnight open (07:00 server), SL = high van gisteren + buffer. Spiegel voor LONG.
+5. **London close:** is om 10:00 NY (17:00 server) de range van de dag (vanaf midnight open) > ADR5, fade dan de richting van de dag op de open van 17:00 server, SL = extreme van de dag + buffer.
+**Meting A:** instap zoals beschreven, SL zoals beschreven (buffer = 0,1 × ATR14 M15), **TP 1,5R** (hoofdmaat, Gitchi's RR), uiterlijk sluiten om 16:00 NY (23:00 server) — het boek is een daytrade-model. SL eerst bij twijfel binnen een M15-candle; limiet: geen TP op de vulcandle. Netto R = bruto − kosten/risico (kosten zoals ronde 1). Minimale SL 0,5 × ATR14 M15 (anders overslaan).
+**Basislijn A:** per trade 5 willekeurige M15-candles uit de verkenningshelft met hetzelfde serveruur en dezelfde richting, met dezelfde SL-afstand in ATR en dezelfde sluittijd.
+
+### B. Bekende effecten buiten ICT
+6. **Trendvolgen D1 (Donchian):** LONG als de D1-close boven de hoogste high van de vorige N dagen sluit (instap volgende open), SHORT gespiegeld; eerste SL 2 × ATR20; uitstap als de close onder de laagste low van de vorige M dagen komt (trailing) of op de SL. Systemen: N/M = 20/10 en 55/20. Eén positie per markt, kosten incl. swap per nacht. Beoordeeld **over de 5 markten samen** (zo wordt trendvolgen altijd gebruikt) én per markt.
+7. **US500 dips kopen:** close > SMA200 en RSI(2) < 10 → LONG op de volgende open; uitstap als de close boven de SMA5 komt, of na 10 dagen, of op een nood-SL van 3 × ATR14. Variant RSI(2) < 5. Ook op de andere 4 markten, alleen als bewijs.
+**Meting B:** echte trades in R (1R = de eerste SL-afstand), na kosten.
+
+### Poort ronde 2 (alles moet kloppen)
+- ≥ 100 trades (B6: over de 5 markten samen ≥ 100);
+- gemiddeld netto ≥ +0,10R per trade;
+- A: edge t.o.v. de basislijn met t ≥ 3,0 als een andere markt mee is (t ≥ 1), anders t ≥ 3,5; B: t ≥ 2,5 t.o.v. nul;
+- positief vóór 2020 én in 2020–2024 (oneven maanden), en in de meerderheid van de jaren.
+Alles in `research/register_ronde2.csv`.
