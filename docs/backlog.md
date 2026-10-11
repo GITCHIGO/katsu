@@ -25,3 +25,6 @@ Laatst bijgewerkt: 9 oktober 2026. Niets hiervan wordt gebouwd zonder eigen spec
 - Entry-verfijning op M1 na een signaal op een hogere timeframe.
 - Dashboard met vangrails (alleen in-sample, eindtest op slot, teller van geprobeerde combinaties) en live monitoring.
 - Echte swapwaarden uit MT5 (Specificatie) invullen i.p.v. de voorlopige.
+- **Dips kopen op aandelenindexen** (wens Gitchi, 11 okt 2026, voor later): US500 gaf in ronde 2 het enige lichtpuntje (78% winrate, +0,10R netto, maar 54 trades). Later testen met D1/H1 van US30, NAS100, GER40, UK100.
+- **ICT-boek, nog niet getest:** CBDR-projecties, NWOG/NDOG, OTE 62–79%, D1-swingbias met raid van candle 3, NY 07–09u retracement, breaker/mitigation/rejection blocks, IPDA 20/40/60 dagen, seizoenen (zie `ict_boek_samenvatting.md`).
+- **Regels voor elke volgende spec:** maximale looptijd per trade; swap evenredig met prijs en periode in plaats van een vast bedrag.
