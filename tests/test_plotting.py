@@ -36,3 +36,15 @@ def test_fvg_pdf_wordt_gemaakt(tmp_path):
     out = tmp_path / "fvg.pdf"
     save_fvg_pdf([(s, bars, trade, "test")], str(out), "intro")
     assert out.stat().st_size > 1000
+
+
+def test_voorbeeldtrade_wordt_getekend(tmp_path):
+    import matplotlib.pyplot as plt
+    from tests.test_bos import BASE as BB, make as bmake
+    from katsu.plotting import plot_example_trade
+    bars = bmake(BB)
+    trade = {"entry_time": bars.index[10], "exit_time": bars.index[10], "fill": 107, "sl": 99.8, "tp": 117.8}
+    fig, ax = plt.subplots()
+    plot_example_trade(ax, bars, 10, trade, "test", {"level": (106, 6), "anchor": (100, 8), "gap": (101, 102, 2)})
+    fig.savefig(tmp_path / "t.png"); plt.close(fig)
+    assert (tmp_path / "t.png").stat().st_size > 1000

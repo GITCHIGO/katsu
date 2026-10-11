@@ -191,3 +191,45 @@ def save_fvg_pdf(items: list, path: str, intro: str) -> None:
             plot_fvg_setup(ax, setup, bars, trade, title)
             ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize=7, ncol=6, frameon=False)
             fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
+
+
+# ---------------- Voorbeeldtrade met structuur (laag 2) ----------------
+
+def plot_example_trade(ax, bars: pd.DataFrame, k: int, trade: dict, title: str, marks: dict,
+                       server_offset_h: int = 1, before: int = 25, after_exit: int = 6, max_len: int = 90) -> None:
+    """
+    Eén echte trade op de setup-timeframe. `marks` kan bevatten:
+      level=(prijs, index)      -> gebroken niveau (oranje stippellijn)
+      anchor=(prijs, index)     -> SL-basis op de structuur (blauwe stippellijn)
+      gap=(onder, boven, index) -> FVG (blauw vlak)
+    """
+    ex = int(bars.index.searchsorted(trade["exit_time"], side="right")) - 1
+    a = max(min([k] + [v[1] for key, v in marks.items() if key in ("level", "anchor")] +
+                ([marks["gap"][2] - 2] if "gap" in marks else [])) - before, 0)
+    b = min(max(ex, k) + after_exit, len(bars) - 1, a + max_len)
+    w = bars.iloc[a:b + 1]
+    x = _candles(ax, w)
+
+    def X(i): return i - a
+    if "level" in marks:
+        p, i = marks["level"]
+        ax.hlines(p, X(i), X(k) + 1, colors="#ef6c00", linestyles="--", linewidth=1.3, label="gebroken niveau")
+    if "anchor" in marks:
+        p, i = marks["anchor"]
+        ax.hlines(p, X(i), X(k) + 1, colors="#1565c0", linestyles="--", linewidth=1.3, label="SL-basis (structuur)")
+    if "gap" in marks:
+        lo_, hi_, i = marks["gap"]
+        ax.add_patch(Rectangle((X(i - 2) - 0.4, lo_), 3.8, hi_ - lo_, color="#1565c0", alpha=0.25, label="FVG"))
+    ax.scatter([X(k)], [w["close"].iloc[X(k)]], marker="o", s=80, facecolors="none", edgecolors="#ef6c00",
+               linewidths=2, zorder=5, label="signaalcandle")
+    e = int(bars.index.searchsorted(trade["entry_time"], side="right")) - 1
+    x1 = min(max(X(ex), X(e) + 1), X(b))
+    ax.hlines(trade["fill"], X(e), x1, colors="black", linewidth=2.0, label="entry")
+    ax.hlines(trade["sl"], X(e), x1, colors="#8e24aa", linewidth=2.2, label="SL")
+    ax.hlines(trade["tp"], X(e), x1, colors="#00838f", linewidth=2.2, linestyles="-.", label="TP (1,5R)")
+    step = max(len(x) // 8, 1)
+    lab = (w.index - pd.Timedelta(hours=server_offset_h)).strftime("%d/%m/%y %H:%M")
+    ax.set_xticks(x[::step]); ax.set_xticklabels(lab[::step], rotation=30, fontsize=7)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.set_title(title, fontsize=9)
+    ax.grid(alpha=0.2)
