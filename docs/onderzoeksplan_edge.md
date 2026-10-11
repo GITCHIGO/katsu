@@ -176,3 +176,25 @@ Niveaus per dag: Azië-range 20:00–00:00 NY (03–07 server) · midnight open 
 - A: edge t.o.v. de basislijn met t ≥ 3,0 als een andere markt mee is (t ≥ 1), anders t ≥ 3,5; B: t ≥ 2,5 t.o.v. nul;
 - positief vóór 2020 én in 2020–2024 (oneven maanden), en in de meerderheid van de jaren.
 Alles in `research/register_ronde2.csv`.
+
+## 12. Ronde 3 — de resterende bouwstenen, vooraf vastgelegd (11 okt 2026, vóór enige meting)
+Beslissing Gitchi: ICT is een methode; we gaan verder met de bouwstenen waarmee we begonnen en die we nog wilden testen.
+Zelfde opzet als ronde 1 (laag 1): 5 markten, M15/H1/H4, verkenningshelft, gepaarde basislijn (zelfde uur en richting), geclusterde fout per week. **Hoofdmaat: R15** (beugel TP +1,5 ATR / SL −1 ATR, Gitchi's RR); R21 ter info. Poort zoals §9, met R15.
+
+**Bouwsteen 4 — Order block:** na een BOS met de structuur mee (zelfde BOS als ronde 1, L = 1/3/5) is het OB de laatste candle tegen de richting (LONG: laatste rode candle) tussen de higher low en de BOS-candle. Gebeurtenis = eerste terugkeer in het OB (LONG: low ≤ OB-high) binnen 24 candles; instap op de OB-high (limiet).
+Varianten: alle · TF+1 mee · met FVG in de impuls (tussen OB en BOS-candle).
+
+**Bouwsteen 5 — Fibonacci 61,8–78,6% (OTE):** na een BOS (L = 1/3/5): been = higher low → hoogste high t/m de BOS-candle. Gebeurtenis = eerste terugloop tot het niveau binnen 24 candles, zolang er geen nieuwe high boven het been komt; instap op dat niveau (limiet).
+Varianten: niveau 61,8% · niveau 70,5% · 61,8% met TF+1 mee.
+
+**Bouwsteen 6 — RSI-divergentie (RSI14):** LONG: twee opeenvolgende bevestigde swing lows (L = 3/5) waarbij de koers een lagere low maakt maar de RSI op die low hoger staat; gebeurtenis op het moment dat de tweede low bevestigd is. SHORT gespiegeld.
+Varianten: alle · RSI op de tweede low < 30 (bij SHORT > 70) · TF+1 mee.
+
+**FVG-soorten (backlog):**
+- **BPR:** een FVG die overlapt met een tegengestelde FVG van de laatste 10 candles → richting van de nieuwste.
+- **Exhaustion-FVG:** FVG na een beweging van ≥ 4 ATR in 12 candles in dezelfde richting → gemeten als ommekeer (tegenrichting).
+- **Range-FVG:** FVG terwijl TF+1 NEUTRAL is → richting van de FVG.
+
+**Sweep-variant (backlog):** **equal highs/lows** — twee bevestigde swing highs (L = 3) binnen 0,1 ATR van elkaar en binnen 48 candles; daarna een candle met wick boven allebei en close eronder → SHORT (spiegel LONG). Varianten: alle · TF+1 mee.
+
+Register: `research/register_ronde3.csv`. Wat de poort haalt, gaat naar laag 2 met de echte regels (SL op de structuur, 1,5R, kosten, **maximale looptijd 5 dagen op M15/H1 en 15 dagen op H4**, swap als % van de prijs: 3%/jaar long, short 0 voor EURUSD en 3% voor de rest).
