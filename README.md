@@ -25,4 +25,5 @@ Onderzoek dat tot de eerste spec leidde: [`docs/onderzoek_forexdetective.md`](do
 pip install -r requirements.txt
 python -m pytest
 ```
+- [x] Fase 2, ronde 2 (ICT-tijdmodellen uit het boek, Donchian, dips): 81 combinaties, 0 door de poort — docs/ronde2_resultaat.md
 - [x] Fase 2, laag 1, ronde 1 (signaalonderzoek, 5 markten, M15/H1/H4, verkenningshelft): 615 combinaties, 0 door de poort — zie docs/ronde1_resultaat.md en research/register_ronde1.csv
