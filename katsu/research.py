@@ -110,7 +110,8 @@ def fvg_recent(bars: pd.DataFrame, k: np.ndarray, d: np.ndarray) -> np.ndarray:
 def bos_events(bars: pd.DataFrame, tf: str, L: int) -> pd.DataFrame:
     """BOS met de structuur mee: hergebruikt katsu.bos.detect_bos zonder H1-filter."""
     s = detect_bos(bars, tf, lambda t: ANY, L=L)
-    return pd.DataFrame({"k": [x.bos_index for x in s], "d": [1 if x.direction == "LONG" else -1 for x in s]})
+    return pd.DataFrame({"k": [x.bos_index for x in s], "d": [1 if x.direction == "LONG" else -1 for x in s],
+                         "hl": [x.hl_price for x in s]})
 
 
 def choch_events(bars: pd.DataFrame, L: int, sweep_window: int = 12) -> pd.DataFrame:
@@ -348,3 +349,28 @@ def clustered_t(x: np.ndarray, weeks: np.ndarray) -> tuple[float, float]:
     s = pd.Series(x - m).groupby(weeks).sum().to_numpy()
     se = np.sqrt((s ** 2).sum()) / n
     return float(m), float(se)
+
+
+# ---------------- Laag 2: structurele SL-basis (plan §10) ----------------
+
+def structural_anchor(bars: pd.DataFrame, fam: str, ev: pd.DataFrame) -> np.ndarray:
+    """
+    SL-basis op de structuur (buffer komt er in execution.simulate nog bij):
+    - BOS:   de laatste bevestigde higher low (lower high bij short) = kolom `hl`
+    - CHoCH: laagste low (hoogste high bij short) tussen de gebroken swing en de CHoCH-candle
+    - FVG_vorming: laagste low (hoogste high) van de drie FVG-candles
+    """
+    o, h, lo, c = _arrays(bars)
+    out = np.full(len(ev), np.nan)
+    for i, r in enumerate(ev.itertuples()):
+        k, d = int(r.k), int(r.d)
+        if fam == "BOS":
+            out[i] = r.hl
+        elif fam == "CHoCH":
+            a = int(r.level_index)
+            out[i] = lo[a:k + 1].min() if d > 0 else h[a:k + 1].max()
+        elif fam == "FVG_vorming":
+            out[i] = lo[k - 2:k + 1].min() if d > 0 else h[k - 2:k + 1].max()
+        else:
+            raise ValueError(fam)
+    return out

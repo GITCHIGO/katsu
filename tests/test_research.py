@@ -173,3 +173,17 @@ def test_basislijn_zonder_vergelijkbare_candle_geeft_nan_en_blijft_uitgelijnd():
     bl = R.baseline(b, np.ones(300), np.array([10, 50]), np.array([1, 1]), np.arange(0, 40), strata=strata)
     assert len(bl) == 10
     assert bl.R21.iloc[:5].notna().all() and bl.R21.iloc[5:].isna().all()
+
+
+def test_structurele_sl_basis():
+    from tests.test_bos import BASE as B_BASE, make as b_make
+    from tests.test_sweep_choch import BASE as C_BASE, make as c_make
+    from tests.test_fvg import BASE as F_BASE, make as f_make
+    b = b_make(B_BASE)
+    assert list(R.structural_anchor(b, "BOS", R.bos_events(b, "5min", 1))) == [100]     # higher low 100
+    c = c_make(C_BASE)
+    ev = R.choch_events(c, L=1); ev = ev[ev.d == 1]
+    assert list(R.structural_anchor(c, "CHoCH", ev)) == [102]   # laagste low van candle 3 t/m 8 (sweep-low 102)
+    f = f_make(F_BASE)
+    fv = R.fvg_events(f)["vorming"]
+    assert list(R.structural_anchor(f, "FVG_vorming", fv)) == [99]

@@ -52,3 +52,19 @@ Zelfde gebeurtenissen, beugel TP +1,5 ATR / SL −1 ATR (quitte zonder kosten bi
 - **0 van 615 door de poort.** t ≥ 2: 3 keer; t ≤ −2: 70 keer, waarvan 61 op M15 (zelfde terugval als bij 2R).
 - Winrate per familie: M15 37–40%, H1 38–40%, H4 38–40%. Willekeurige momenten geven gemiddeld hetzelfde (−0,01R).
 - Conclusie: de RR verandert de winrate, niet de verwachting. Zonder voorsprong in de instap levert geen enkele RR iets op.
+
+## Laag 2 voor de 6 beste H4-aanwijzingen (plan §10, verkenningshelft)
+Echte regels: SL op de structuur, TP 1,5R (en 2R ter info), alle kosten incl. swap, 1 positie per markt, dagstop, uitvoering op M15. Register: `research/register_laag2_h4.csv`.
+
+| Kandidaat | Trades (1,5R) | Winrate | Gem. netto R | t | vóór 2020 | 2020–24 |
+|---|---|---|---|---|---|---|
+| GBPUSD BOS L1, D1 mee | 168 | 42% | −0,01 | −0,1 | −0,04 | +0,06 |
+| EURUSD CHoCH L3 | 260 | 38% | −0,08 | −1,1 | −0,11 | +0,01 |
+| EURUSD CHoCH L3, displacement | 169 | 40% | −0,05 | −0,5 | −0,03 | −0,12 |
+| EURUSD CHoCH L3, D1 mee | 139 | 40% | −0,04 | −0,4 | −0,02 | −0,09 |
+| GBPUSD CHoCH L5 | 161 | 40% | −0,07 | −0,7 | −0,02 | −0,26 |
+| GBPUSD FVG, D1 mee | 298 | 39% | −0,07 | −1,1 | −0,10 | +0,09 |
+
+**Geen enkele door de poort; alle zes negatief na kosten.** Met de echte structuur-SL verdwijnen de kleine aanwijzingen uit laag 1 volledig. Het SMC-hoofdstuk is daarmee grondig afgesloten.
+
+**Ontdekte zwakte in de regels (voor elke volgende spec):** zonder maximale looptijd kan een H4-trade met een grote structuur-SL maanden of jaren openblijven (één GBPUSD-short van de Brexit-dag liep tot het einde van de data) en blokkeert dan de markt. Voorstel: een maximale looptijd vastleggen in elke volgende spec (bv. 10 handelsdagen op H4).

@@ -1,0 +1,13 @@
+trades,winrate,gem_r,totaal_r,pf,max_dd,max_verliesreeks,t,voor_2020,2020_24,jaren_positief,aantal_jaren,statussen,kandidaat,rr,poort
+168,0.4167,-0.0097,-1.6238,0.9843,16.9949,6,-0.1004,-0.0350,0.0596,0.4000,15,"{'gesloten': 168, 'positie_open': 105, 'sl_te_klein': 5}",GBPUSD BOS L1 TF+1 mee,1.5000,False
+158,0.3544,0.0025,0.3896,1.0036,18.0901,8,0.0220,-0.0242,0.0760,0.5333,15,"{'gesloten': 158, 'positie_open': 115, 'sl_te_klein': 5}",GBPUSD BOS L1 TF+1 mee,2.0000,False
+260,0.3846,-0.0818,-21.2731,0.8727,25.8502,15,-1.0536,-0.1052,0.0054,0.4000,15,"{'gesloten': 260, 'positie_open': 211, 'dagstop': 1}",EURUSD CHoCH L3 alle,1.5000,False
+228,0.3114,-0.1215,-27.7018,0.8326,40.0222,15,-1.3137,-0.1924,0.1310,0.4000,15,"{'positie_open': 243, 'gesloten': 228, 'dagstop': 1}",EURUSD CHoCH L3 alle,2.0000,False
+169,0.3964,-0.0467,-7.8839,0.9253,17.9593,9,-0.4935,-0.0253,-0.1201,0.4667,15,"{'gesloten': 169, 'positie_open': 78, 'dagstop': 1}",EURUSD CHoCH L3 displacement,1.5000,False
+157,0.3121,-0.1161,-18.2271,0.8388,24.6018,11,-1.0397,-0.0865,-0.2193,0.1333,15,"{'gesloten': 157, 'positie_open': 90, 'dagstop': 1}",EURUSD CHoCH L3 displacement,2.0000,False
+139,0.4029,-0.0377,-5.2374,0.9396,13.2841,8,-0.3590,-0.0200,-0.0923,0.4667,15,"{'gesloten': 139, 'positie_open': 21, 'sl_te_klein': 1}",EURUSD CHoCH L3 TF+1 mee,1.5000,False
+125,0.3360,-0.0475,-5.9338,0.9323,20.9858,13,-0.3681,-0.0929,0.0904,0.5333,15,"{'gesloten': 125, 'positie_open': 35, 'sl_te_klein': 1}",EURUSD CHoCH L3 TF+1 mee,2.0000,False
+161,0.3975,-0.0721,-11.6001,0.8883,16.6699,11,-0.7413,-0.0175,-0.2548,0.4000,15,"{'gesloten': 161, 'positie_open': 107, 'sl_te_klein': 1}",GBPUSD CHoCH L5 alle,1.5000,False
+146,0.3425,-0.0595,-8.6893,0.9160,26.2885,18,-0.5124,-0.0176,-0.2151,0.4000,15,"{'gesloten': 146, 'positie_open': 122, 'sl_te_klein': 1}",GBPUSD CHoCH L5 alle,2.0000,False
+298,0.3893,-0.0712,-21.2254,0.8876,29.7816,9,-1.1013,-0.0996,0.0927,0.5000,10,"{'positie_open': 972, 'gesloten': 298, 'sl_te_klein': 23, 'kosten_te_hoog': 4}",GBPUSD FVG_vorming L- TF+1 mee,1.5000,False
+205,0.3122,-0.1145,-23.4757,0.8407,27.3349,9,-1.2234,-0.1145,,0.1429,7,"{'positie_open': 1075, 'gesloten': 205, 'sl_te_klein': 17}",GBPUSD FVG_vorming L- TF+1 mee,2.0000,False
