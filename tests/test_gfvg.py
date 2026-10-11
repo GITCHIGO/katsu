@@ -1,5 +1,5 @@
 """
-Gitchi-FVG (spec v0.4), met de hand uitgerekend. L = 1 om de reeksen kort te houden.
+Gitchi-FVG (spec v0.4, versie 2), met de hand uitgerekend. L = 1 om de reeksen kort te houden, ATR = 1.
 
 Reeks LONG (index: open, high, low, close):
  0  100 101  99   100
@@ -11,11 +11,12 @@ Reeks LONG (index: open, high, low, close):
  6  104 104 102   102,5
  7  102,5 103 98  99     bearish candle, laagste low 98 -> oorsprong én order block
  8  99  101 98,5  100,8  candle 1 van de FVG (high 101)
- 9  100,8 106 100,7 105,8  sluit boven 105 -> breuk op candle 9
-10  105,8 107 102 106,5  low 102 > high(8) 101 -> bullish FVG, gat 101–102
-11  ...                  (zie per test)
-Verwacht: entry 102 (bovenkant gat), SL-basis = laagste low OB(7)..candle 2(9) = 98, TP = 110 (oude high,
-nooit meer geraakt, boven de top van het been 107).
+ 9  100,8 106 100,7 105,8  candle 2: sluit boven 105 -> breuk door de middelste candle
+10  104 107 102 106,8    candle 3: low 102 > high(8) 101 -> gat 101–102 (1 ATR); body 2,8 / range 5 = 0,56
+11  106,8 106,9 105 105,5
+12  105,5 106 104 104,5
+Verwacht: rand 102, midden 101,5, SL-basis = laagste low OB(7)..candle 2(9) = 98,
+TP = 110 (oude high, nooit meer geraakt, boven de top van het been 107).
 """
 import pandas as pd
 import pytest
@@ -25,9 +26,8 @@ from katsu.gfvg import detect_gfvg, make_gfvg_plan
 
 BASE = [(100, 101, 99, 100), (100, 110, 100, 105), (105, 106, 103, 104), (104, 105, 101, 102),
         (102, 103, 100, 101), (101, 105, 100.5, 104), (104, 104, 102, 102.5), (102.5, 103, 98, 99),
-        (99, 101, 98.5, 100.8), (100.8, 106, 100.7, 105.8), (105.8, 107, 102, 106.5)]
-END_A = [(106.5, 106.8, 105, 105.5), (105.5, 106, 104, 104.5)]          # duw stopt: swing high 107 op 10
-END_B = [(106.5, 109, 106.8, 108.5), (108.5, 108.7, 107, 107.5), (107.5, 108, 106.9, 107)]  # 2de FVG op 11
+        (99, 101, 98.5, 100.8), (100.8, 106, 100.7, 105.8), (104, 107, 102, 106.8),
+        (106.8, 106.9, 105, 105.5), (105.5, 106, 104, 104.5)]
 
 
 def bars(rows, mirror=False):
@@ -38,72 +38,64 @@ def bars(rows, mirror=False):
     return pd.DataFrame({"open": o, "high": h, "low": l, "close": c, "spread": 0}, index=idx)
 
 
-def longs(b, choice):
-    return [s for s in detect_gfvg(b, choice, L=1) if s.direction == "LONG"]
+def longs(rows, atr=1.0):
+    b = bars(rows)
+    return [s for s in detect_gfvg(b, [atr] * len(b), L=1) if s.direction == "LONG"]
 
 
-def test_long_basis_eerste():
-    (s,) = longs(bars(BASE + END_A), "eerste")
-    assert (s.break_index, s.broken_level, s.origin_index, s.ob_index) == (9, 105, 7, 7)
-    assert (s.fvg_index, s.signal_index) == (10, 10)
-    assert (s.entry, s.gap_far, s.anchor, s.tp) == (102, 101, 98, 110)
-    assert s.leg_end_index == 11 and s.replaced_index is None
+def test_long_basis():
+    (s,) = longs(BASE)
+    assert (s.break_index, s.fvg_index, s.signal_index) == (9, 10, 10)
+    assert (s.broken_level, s.swing_index, s.origin_index, s.ob_index) == (105, 5, 7, 7)
+    assert (s.edge, s.gap_far, s.anchor, s.tp) == (102, 101, 98, 110)
+    assert s.entry(0.0) == 102 and s.entry(0.5) == 101.5
 
 
 def test_short_is_exact_gespiegeld():
-    shorts = [s for s in detect_gfvg(bars(BASE + END_A, mirror=True), "eerste", L=1) if s.direction == "SHORT"]
-    (s,) = shorts
+    b = bars(BASE, mirror=True)
+    (s,) = [x for x in detect_gfvg(b, [1.0] * len(b), L=1) if x.direction == "SHORT"]
     assert (s.fvg_index, s.break_index, s.broken_level) == (10, 9, 95)
-    assert (s.entry, s.gap_far, s.anchor, s.tp) == (98, 99, 102, 90)
+    assert (s.edge, s.gap_far, s.anchor, s.tp) == (98, 99, 102, 90)
+    assert s.entry(0.5) == 98.5
 
 
-def test_laatste_schuift_mee_naar_de_nieuwe_fvg():
-    b = bars(BASE + END_B)
-    first = longs(b, "eerste")
-    assert [s.fvg_index for s in first] == [10]
-    last = longs(b, "laatste")
-    assert [s.fvg_index for s in last] == [10, 11]
-    assert last[0].replaced_index == 11 and last[1].replaced_index is None
-    # FVG op 11: gat high(9)=106 .. low(11)=106,8 · OB nog altijd candle 7 -> basis 98 · TP 110
-    assert (last[1].entry, last[1].anchor, last[1].tp, last[1].signal_index) == (106.8, 98, 110, 11)
+def test_middelste_candle_moet_breken():
+    # candle 9 sluit op 104,9 (onder 105); pas candle 10 sluit erboven -> de breuk zit in candle 3: geen setup
+    rows = BASE[:9] + [(100.8, 105, 100.7, 104.9), (104, 107, 102, 106.8), (106.8, 106.9, 104.5, 105.5),
+                       (105.5, 106, 104, 104.5)]
+    assert longs(rows) == []
 
 
-def test_geen_breuk_geen_setup():
-    rows = BASE[:9] + [(100.8, 104.9, 100.7, 104.8), (104.8, 105, 102, 104.5), (104.5, 104.6, 103, 103.5)]
-    assert longs(bars(rows), "eerste") == []        # sluit nooit boven 105
+def test_te_krap_gat():
+    assert longs(BASE, atr=2.5) == []          # gat 1 < 0,5 × 2,5 = 1,25
+    assert len(longs(BASE, atr=2.0)) == 1      # gat 1 = 0,5 × 2,0: precies genoeg
 
 
-def test_al_aangeraakte_fvg_telt_niet():
-    # FVG vormt op 10, maar de breuk komt pas op 12; candle 11 zakt terug in het gat -> geen setup
-    rows = BASE[:9] + [(100.8, 104.0, 100.7, 103.9), (103.9, 104.5, 102, 104.4),
-                       (104.4, 104.7, 101.5, 103), (103, 106, 103, 105.9), (105.9, 106.5, 104.6, 105.2),
-                       (105.2, 105.5, 104, 104.2)]
-    # highs stijgen tot de breuk (geen nieuwe swing high); FVG 10 (gat 101–102) wordt op 11 geraakt (low 101,5)
-    for choice in ("eerste", "laatste"):
-        assert longs(bars(rows), choice) == []
+def test_candle_3_met_alleen_wick_telt_niet():
+    rows = BASE[:10] + [(105.8, 107, 102, 105.0)] + BASE[11:]    # body 0,8 / range 5 = 0,16 < 0,25
+    assert longs(rows) == []
 
 
 def test_geen_oude_high_erboven_geen_tp():
-    rows = [(100, 101, 99, 100), (100, 102, 100, 101)] + BASE[2:] + END_A   # oude high nu 102 i.p.v. 110
-    (s,) = longs(bars(rows), "eerste")
+    rows = [(100, 101, 99, 100), (100, 102, 100, 101)] + BASE[2:]   # oude high nu 102 i.p.v. 110
+    (s,) = longs(rows)
     assert s.tp is None
     b = bars(rows)
     assert make_gfvg_plan(s, b, [1.0] * len(b), "ongeldig", "EURUSD") is None
 
 
-def test_orderplan_geldigheid_en_tp():
-    b = bars(BASE + END_B)
+def test_orderplan():
+    b = bars(BASE)
+    (s,) = longs(BASE)
     a = [1.0] * len(b)
-    first, second = longs(b, "laatste")
-    p = make_gfvg_plan(first, b, a, "24u", "EURUSD")
     t_sig = b.index[10] + pd.Timedelta("15min")
-    assert p.signal_time == t_sig and p.kind == "limit" and p.limit_price == 102
-    assert p.valid_until == b.index[11] + pd.Timedelta("15min")       # vervangen door de FVG op 11
+    p = make_gfvg_plan(s, b, a, "24u", "EURUSD", entry_frac=0.5)
+    assert p.signal_time == t_sig and p.kind == "limit" and p.limit_price == 101.5
+    assert p.valid_until == t_sig + pd.Timedelta(hours=24)
     assert p.tp_price == 110 and p.cancel_price == 110 and p.anchor == 98 and p.max_cost_r == 0.2
-    q = make_gfvg_plan(longs(b, "eerste")[0], b, a, "24u", "EURUSD")
-    assert q.valid_until == t_sig + pd.Timedelta(hours=24)
-    r = make_gfvg_plan(longs(b, "eerste")[0], b, a, "ongeldig", "EURUSD")
-    assert r.valid_until == b.index[-1] + pd.Timedelta("15min")         # reeks korter dan 480 candles
+    q = make_gfvg_plan(s, b, a, "ongeldig", "EURUSD")
+    assert q.limit_price == 102
+    assert q.valid_until == b.index[-1] + pd.Timedelta("15min")         # reeks korter dan 480 candles
 
 
 # ---------------- uitvoering: vaste TP en annulering ----------------
