@@ -285,3 +285,29 @@ def test_swap_apart_voor_long_en_short():
 def test_eurusd_swap_preset():
     from katsu.execution import EURUSD
     assert (EURUSD.swap, EURUSD.swap_short) == (0.00008, 0.0)
+
+
+# ---------------- Maximale looptijd en meegroeiende swap (11 okt 2026) ----------------
+
+def test_maximale_looptijd_sluit_op_de_close():
+    from dataclasses import replace
+    ins = replace(INS, max_hold_days=1)
+    # LONG zoals de basis; 3 dagen vlak, geen SL/TP -> sluiten op de laatste candle vóór 24 uur na de vulling
+    idx = pd.date_range("2025-01-06 10:00", periods=3 * 24, freq="1h")
+    d = M1(pd.DataFrame({"open": 100.0, "high": 100.3, "low": 99.9, "close": 100.2, "spread": 5}, index=idx), ins)
+    tr = simulate(OrderPlan("LONG", idx[0], "market", 98.0, 1.0), d, ins)
+    assert tr.exit_reason == "MAX_DUUR"
+    assert tr.exit_time == pd.Timestamp("2025-01-07 09:00")      # laatste candle vóór 10:00 de dag erna
+    assert tr.exit_price == pytest.approx(100.19)                 # close 100,20 − slippage
+
+
+def test_swap_als_procent_van_de_prijs():
+    from dataclasses import replace
+    ins = replace(INS, swap_pct_long=0.0365, swap_pct_short=0.0)  # 3,65%/jaar = 0,01% per nacht
+    start = pd.Timestamp("2025-01-06 23:58")
+    d = M1(pd.DataFrame({"open": [100, 100.1, 100.3], "high": [100.3, 100.4, 105.0],
+                         "low": [99.9, 100.0, 100.2], "close": [100.1, 100.3, 104.9], "spread": 5},
+                        index=pd.to_datetime(["2025-01-06 23:58", "2025-01-06 23:59", "2025-01-07 01:00"])), ins)
+    tr = simulate(OrderPlan("LONG", start, "market", 98.0, 1.0), d, ins)
+    # 1 nacht × 100,11 × 0,0001 = 0,010011 in prijs; risico 2,31
+    assert tr.swap_r == pytest.approx(100.11 * 0.0001 / 2.31)

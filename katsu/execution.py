@@ -49,6 +49,9 @@ class Instrument:
                                       # wordt bewust niet meegeteld (0 = gratis, nooit negatief)
     rollover_min_spread: float = 0.0  # spread tijdens rollover = max(2 × data, dit); 0 = uit
     close_eod: bool = False       # True = oud gedrag: sluiten om 00:00 server (23:00 BE)
+    max_hold_days: float | None = None    # maximale looptijd in kalenderdagen; daarna sluiten op de close
+    swap_pct_long: float | None = None    # swap als % van de prijs per jaar (long); vervangt `swap` als gezet
+    swap_pct_short: float | None = None   # idem short (None = zelfde als long)
 
 
 # Vastgelegde instellingen per markt (spec §2 en §5).
@@ -191,6 +194,8 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
         end = int(d.t.searchsorted(day_end))
     else:
         end = len(d.t)
+    if ins.max_hold_days is not None:
+        end = min(end, int(d.t.searchsorted(d.t[fi] + pd.Timedelta(days=ins.max_hold_days))))
     k = None
     exit_price = reason = None
     for a in range(fi, end, CHUNK):
@@ -218,11 +223,20 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
         k = end - 1                                                 # laatste candle (dag of data)
         close = d.c[k] if long else d.c[k] + d.sp[k]
         exit_price = close - s * slip
-        reason = "EINDE_DAG" if ins.close_eod else "EINDE_DATA"
+        if ins.close_eod:
+            reason = "EINDE_DAG"
+        elif end < len(d.t):
+            reason = "MAX_DUUR"
+        else:
+            reason = "EINDE_DATA"
 
     r_gross = s * (exit_price - fill) / risk
     nights = int(d.day[k] - d.day[fi])
-    swap_rate = ins.swap if (long or ins.swap_short is None) else ins.swap_short
+    if ins.swap_pct_long is not None:
+        pct = ins.swap_pct_long if (long or ins.swap_pct_short is None) else ins.swap_pct_short
+        swap_rate = fill * pct / 365.0             # meegroeiend met de prijs
+    else:
+        swap_rate = ins.swap if (long or ins.swap_short is None) else ins.swap_short
     swap_r = max(swap_rate, 0.0) * nights / risk
     cost_r = ins.commission / risk + swap_r
     return Trade(plan.direction, plan.signal_time, "gesloten", d.t[fi], fill, sl, tp, risk,
