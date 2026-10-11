@@ -73,3 +73,8 @@ def test_rows_for_gebruikt_de_gekozen_beugel():
     r15 = rows_for(ev, "R15").iloc[0]
     assert (r21.R21, r21.edge, r21.winrate) == (0.5, 0.5, 0.5)
     assert (r15.R21, r15.basis_R21, r15.edge, r15.winrate, r15.maat) == (0.25, 0.5, -0.25, 0.5, "R15")
+
+
+def test_een_enkele_L_heeft_geen_buren_nodig():
+    r = gate(pd.DataFrame([base_row(L=3)])).iloc[0]
+    assert np.isnan(r.L_zelfde_teken) and bool(r.poort)

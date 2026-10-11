@@ -1,0 +1,3 @@
+trades,winrate,gem_r,totaal_r,pf,max_dd,max_verliesreeks,t,voor_2020,2020_24,jaren_positief,aantal_jaren,statussen,kandidaat,poort
+99,0.3737,-0.1362,-13.4870,0.7880,19.4452,8,-1.1367,-0.1253,-0.1537,0.4444,9,"{'gesloten': 99, 'kosten_te_hoog': 4}","US500 H1 Fib 70,5 L3 omgekeerd",False
+86,0.4767,0.1168,10.0430,1.2147,8.8699,7,0.8812,0.0266,0.2482,0.6667,9,"{'gesloten': 86, 'positie_open': 9, 'sl_te_klein': 6}","US500 H4 Fib 70,5 L1 omgekeerd",False

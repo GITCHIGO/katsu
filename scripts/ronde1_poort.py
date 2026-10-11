@@ -28,7 +28,7 @@ VARIANTS = {
 MIN_N = 100
 
 
-def rows_for(ev, metric="R21"):
+def rows_for(ev, metric="R21", variants=None):
     """metric = "R21" (TP 2 ATR) of "R15" (TP 1,5 ATR); SL is altijd 1 ATR."""
     bcol = {"R21": "base", "R15": "base15"}[metric]
     ev = ev.copy()
@@ -38,8 +38,9 @@ def rows_for(ev, metric="R21"):
     ev["week"] = wk.year.astype(int) * 100 + wk.week.astype(int)
     ev["jaar"] = ev["time"].dt.year
     out = []
+    variants = variants or VARIANTS
     for (mkt, tf, fam, L), g in ev.groupby(["market", "tf", "fam", ev["L"].fillna(0)], sort=False):
-        for vname, col, btag in VARIANTS[fam]:
+        for vname, col, btag in variants[fam]:
             s = g if col is None else g[g[col].astype(bool)]
             s = s[s[metric].notna() & s[bcol + btag].notna()]
             diff = (s[metric] - s[bcol + btag]).to_numpy()
@@ -78,7 +79,9 @@ def gate(reg):
         if pd.isna(r.L):
             bur.append(np.nan); continue
         o = reg[(reg.markt == r.markt) & (reg.tf == r.tf) & (reg.familie == r.familie) & (reg.variant == r.variant)]
-        bur.append(int((np.sign(o.edge) == np.sign(r.edge)).sum()))   # inclusief zichzelf, van 3
+        if len(o) < 2:                       # maar één waarde van L getest: geen buren om te vergelijken
+            bur.append(np.nan); continue
+        bur.append(int((np.sign(o.edge) == np.sign(r.edge)).sum()))   # inclusief zichzelf
     reg["L_zelfde_teken"] = bur
     need_t = np.where(reg.andere_markten_mee >= 1, 3.0, 3.5)
     halves_ok = reg.edge_voor_2020.isna() | reg.edge_2020_24.isna() | \

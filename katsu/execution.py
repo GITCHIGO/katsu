@@ -73,7 +73,7 @@ CHUNK = 2880                                      # aantal M1-candles per zoekst
 class OrderPlan:
     direction: str
     signal_time: pd.Timestamp
-    kind: str                       # "market" of "limit"
+    kind: str                       # "market", "limit" of "stop"
     anchor: float                   # sweep-extreme (basis voor de SL)
     atr: float                      # ATR14 van de setup-timeframe op het signaal
     limit_price: float | None = None
@@ -171,11 +171,19 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
         end_t = plan.valid_until
         j = i
         while j < len(d.t) and d.t[j] < end_t:
-            ask_o, ask_l = d.o[j] + d.sp[j], d.lo[j] + d.sp[j]
-            if long and ask_l <= plan.limit_price:
-                fi = j; fill = min(plan.limit_price, ask_o); break
-            if not long and d.h[j] >= plan.limit_price:
-                fi = j; fill = max(plan.limit_price, d.o[j]); break
+            ask_o, ask_l, ask_h = d.o[j] + d.sp[j], d.lo[j] + d.sp[j], d.h[j] + d.sp[j]
+            if plan.kind == "stop":
+                # stoporder: koopt als de ASK erboven komt / verkoopt als de BID eronder komt; vulling op
+                # de stopprijs of slechter (gap), plus slippage
+                if long and ask_h >= plan.limit_price:
+                    fi = j; fill = max(plan.limit_price, ask_o) + slip; break
+                if not long and d.lo[j] <= plan.limit_price:
+                    fi = j; fill = min(plan.limit_price, d.o[j]) - slip; break
+            else:
+                if long and ask_l <= plan.limit_price:
+                    fi = j; fill = min(plan.limit_price, ask_o); break
+                if not long and d.h[j] >= plan.limit_price:
+                    fi = j; fill = max(plan.limit_price, d.o[j]); break
             j += 1
         if fi is None:
             return Trade(plan.direction, plan.signal_time, "niet_gevuld")

@@ -311,3 +311,28 @@ def test_swap_als_procent_van_de_prijs():
     tr = simulate(OrderPlan("LONG", start, "market", 98.0, 1.0), d, ins)
     # 1 nacht × 100,11 × 0,0001 = 0,010011 in prijs; risico 2,31
     assert tr.swap_r == pytest.approx(100.11 * 0.0001 / 2.31)
+
+
+def test_sell_stop_vult_op_stopprijs_min_slippage():
+    # SHORT sell-stop op 99,50: candle 1 bid-low 99,40 <= 99,50 -> gevuld op 99,50 − 0,01 = 99,49
+    # SL = anker 101 + (0,10 + 0,1) = 101,20 · risico 1,71 · TP = 99,49 − 1,5 × 1,71 = 96,925 -> 96,93 (afronding tick)
+    from dataclasses import replace
+    ins = replace(INS, rr=1.5)
+    plan = OrderPlan("SHORT", T0, "stop", 101.0, 1.0, 99.5, T0 + pd.Timedelta(minutes=5))
+    d = m1([(100, 100.2, 99.8, 100.0), (100.0, 100.1, 99.4, 99.6), (99.6, 99.7, 96.5, 96.8)])
+    tr = simulate(plan, d, ins)
+    assert tr.fill == pytest.approx(99.49) and tr.sl == pytest.approx(101.20)
+    assert tr.exit_reason == "TP" and tr.entry_time == T0 + pd.Timedelta(minutes=1)
+
+
+def test_buy_stop_gap_vult_op_open():
+    plan = OrderPlan("LONG", T0, "stop", 98.0, 1.0, 100.5, T0 + pd.Timedelta(minutes=5))
+    d = m1([(100, 100.3, 99.8, 100.1), (101.0, 101.2, 100.9, 101.1)])   # opent boven de stop
+    tr = simulate(plan, d, INS)
+    assert tr.fill == pytest.approx(101.0 + 0.10 + 0.01)               # ask-open + slippage
+
+
+def test_stop_niet_geraakt():
+    plan = OrderPlan("LONG", T0, "stop", 98.0, 1.0, 101.0, T0 + pd.Timedelta(minutes=2))
+    d = m1([(100, 100.3, 99.8, 100.1), (100.1, 100.5, 100.0, 100.4), (100.4, 102, 100.3, 101.8)])
+    assert simulate(plan, d, INS).status == "niet_gevuld"               # candle 2 valt buiten de geldigheid
