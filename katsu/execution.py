@@ -80,13 +80,16 @@ class OrderPlan:
     valid_until: pd.Timestamp | None = None
     market: str = "XAUUSD"
     max_cost_r: float | None = None   # kostenplafond (spec v0.2 §4); None = geen plafond
+    tp_price: float | None = None     # vaste TP-prijs (spec v0.4: oude high); None = rr × risk
+    cancel_price: float | None = None # limiet/stop wordt geannuleerd als de koers dit niveau eerst raakt
 
 
 @dataclass
 class Trade:
     direction: str
     signal_time: pd.Timestamp
-    status: str                     # "gesloten", "sl_te_klein", "kosten_te_hoog", "niet_gevuld", "geen_data"
+    status: str                     # "gesloten", "sl_te_klein", "kosten_te_hoog", "niet_gevuld", "geen_data",
+                                    # "geannuleerd" (cancel_price eerst geraakt; exit_time = moment van annuleren)
     entry_time: pd.Timestamp | None = None
     fill: float | None = None
     sl: float | None = None
@@ -172,6 +175,11 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
         j = i
         while j < len(d.t) and d.t[j] < end_t:
             ask_o, ask_l, ask_h = d.o[j] + d.sp[j], d.lo[j] + d.sp[j], d.h[j] + d.sp[j]
+            if plan.cancel_price is not None:
+                # annulering eerst: raakt dezelfde candle de vulprijs én het annuleerniveau, dan telt annuleren
+                # (we weten niet wat eerst kwam; zo nemen we nooit een trade die er misschien niet was)
+                if (long and d.h[j] >= plan.cancel_price) or (not long and ask_l <= plan.cancel_price):
+                    return Trade(plan.direction, plan.signal_time, "geannuleerd", exit_time=d.t[j])
             if plan.kind == "stop":
                 # stoporder: koopt als de ASK erboven komt / verkoopt als de BID eronder komt; vulling op
                 # de stopprijs of slechter (gap), plus slippage
@@ -194,7 +202,12 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     risk = s * (fill - sl)
     if risk < ins.min_sl_atr * plan.atr:
         return Trade(plan.direction, plan.signal_time, "sl_te_klein", d.t[fi], fill, sl, None, risk)
-    tp = _round_tick(fill + s * ins.rr * risk, ins.tick)
+    if plan.tp_price is not None:
+        tp = _round_tick(plan.tp_price, ins.tick)
+        if s * (tp - fill) <= 0:                        # TP ligt niet voorbij de vulling: geen trade
+            return Trade(plan.direction, plan.signal_time, "tp_ongeldig", d.t[fi], fill, sl, tp, risk)
+    else:
+        tp = _round_tick(fill + s * ins.rr * risk, ins.tick)
 
     # ---- Beheer tot exit ----
     if ins.close_eod:
@@ -317,5 +330,7 @@ def run_portfolio(plans: list[OrderPlan], data: dict, instruments: dict, day_sto
                                      tr.r_net))
         elif tr.status == "niet_gevuld" and p.valid_until is not None:
             busy_until[p.market] = p.valid_until
+        elif tr.status == "geannuleerd":
+            busy_until[p.market] = tr.exit_time
         rows.append({"market": p.market, **tr.as_dict()})
     return pd.DataFrame(rows)
