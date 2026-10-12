@@ -180,3 +180,11 @@ def test_entry_38_2_procent_diep():
     (t,) = [x for x in detect_gfvg(bm, [1.0] * len(bm), L=1) if x.direction == "SHORT"]
     q = make_gfvg_plan(t, bm, [1.0] * len(bm), "24u", "EURUSD", entry_frac=0.382)
     assert q.limit_price == pytest.approx(98 + 0.382)                # gespiegeld: 98,382
+
+
+def test_eindtest_periode_en_uitgesloten_dagen():
+    from scripts.eindtest_gfvg import final_mask
+    t = pd.DatetimeIndex(["2024-12-31 23:45", "2025-01-01 00:00", "2026-09-22 12:00", "2026-09-23 00:30",
+                          "2026-09-23 01:30", "2026-10-06 10:00", "2026-10-07 10:00"])
+    # 2026-09-23 00:30 server = 22/9 23:30 Belgisch -> screenshotdag, telt niet; 01:30 server = 23/9 -> telt
+    assert list(final_mask(t)) == [False, True, False, False, True, False, True]

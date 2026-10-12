@@ -1,6 +1,6 @@
 # KATSU — spec v0.4: Gitchi-FVG (FVG volgens Gitchi's eigen principes)
 
-Datum: 11 oktober 2026 · Status: **concept versie 2 (na Gitchi's feedback op 10 voorbeelden), nog niet bevroren**
+Datum: 11 oktober 2026 · Status: **BEVROREN op 12 okt 2026 (versie 2 + §10–11). Geen wijzigingen meer.**
 Bron: Gitchi's uitleg en screenshots (EURUSD M15, sep–okt 2026). Die screenshots liggen in de eindtestperiode;
 de dagen 29–30/9, 21–22/9, 3/9 en 6/10/2026 worden daarom uit de eindtest gehouden.
 
@@ -95,3 +95,18 @@ Uitvoering per markt (één positie of lopende order per markt, dagstop −2R), 
 14 kalenderdagen, alle kosten. Register: `research/register_gfvg.csv`. Poort zoals §8.
 Ter info (geen poort): resultaat vóór kosten, vulgraad, annuleringen, long/short apart, per jaar.
 Wat er ook uitkomt: een variant die de poort haalt, moet daarna nog standhouden op de bevestigingshelft.
+
+## 11. Eenmalige eindtest 2025–2026 (beslissing Gitchi 12 okt 2026, vastgelegd vóór de run)
+Context: de verkenningshelft haalde de poort niet (0/24; zie `gfvg_resultaat.md`). Gitchi kiest er bewust voor om de
+eindtest toch nu te gebruiken. Daarom ligt alles hieronder vast vóór er één candle van 2025–2026 bekeken is.
+- **Eén hoofdvariant**: entry 38,2% diep (Gitchi's bedoeling) · zonder trendvoorwaarde · geldig tot ongeldig.
+  Gekozen omdat het Gitchi's lezing van de fib is en de meeste trades geeft; NIET de beste uit de verkenning.
+- **Eén portefeuille**: EURUSD + GBPUSD + XAUUSD samen (gedeelde dagstop −2R, één positie per markt).
+- **Periode**: signalen vanaf 1 jan 2025 tot het einde van de data (9 okt 2026). Swings en ATR mogen eerdere
+  candles gebruiken (opwarming). De screenshotdagen van Gitchi (3, 21, 22, 29, 30 sep en 6 okt 2026) tellen niet.
+- **Uitvoering**: zoals de verkenning (M15-candles, alle kosten, max. looptijd 14 dagen).
+- **Geslaagd** als ALLES klopt: ≥ 100 trades · gemiddeld netto ≥ +0,10R · t ≥ 2,0 (geclusterd per week) ·
+  positief in 2025 én in 2026.
+- **Ter info, zonder poort**: per markt, zonder kosten, en dezelfde variant met trendspotter (H1+H4 mee).
+- Uitslag is definitief. Geslaagd = hoogstens kandidaat voor demo (20 trades lijn per lijn met MT5), nooit meteen live.
+  Niet geslaagd = deze FVG-regels zijn afgesloten; geen nieuwe varianten testen op 2025–2026.
