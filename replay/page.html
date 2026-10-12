@@ -146,6 +146,8 @@ textarea { resize: vertical; min-height: 34px; }
     <span class="spacer"></span>
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
+    <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
+    <span class="dbstate" title="Versie van de pagina">v3</span>
   </header>
 
   <div class="main">
@@ -740,6 +742,18 @@ document.addEventListener("keydown", (e) => {
 });
 function toast(txt) { const d = document.createElement("div"); d.textContent = txt; $("toast").appendChild(d); setTimeout(() => d.remove(), 3500); }
 window.addEventListener("beforeunload", () => saveProgress(true));
+$("reload").addEventListener("click", async () => {
+  pause(); $("reload").disabled = true; $("reload").textContent = "↻ Bewaren…";
+  saveProgress(true); clearTimeout(debounced.get("tekeningen/" + S.ep));
+  if (S.ep) save("tekeningen/" + S.ep, { ep: S.ep, items: S.drawings });
+  await Promise.all([...chains.values()]);               // eerst alles bewaren
+  try { location.reload(); } catch (e) {}
+  setTimeout(async () => {                                // herladen geblokkeerd: alles opnieuw inlezen
+    S.allTrades.clear(); S.allDecisions.clear(); S.progress.clear();
+    await initDb(); if (S.ep) await openEpisode(S.ep);
+    $("reload").disabled = false; $("reload").textContent = "↻ Vernieuwen"; toast("Opnieuw ingelezen");
+  }, 1500);
+});
 
 renderEpList(); renderStats(); setDir(1);
 initDb().then(() => { let last = null; try { last = localStorage.getItem("katsuReplayEp"); } catch (e) {} if (last && EPISODES.some((e) => e.id === last)) openEpisode(last); });
