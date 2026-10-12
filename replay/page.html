@@ -1,0 +1,737 @@
+<title>KATSU Replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: terminal met werkbalk boven, tekengereedschap links, grafiek in het midden, orderpaneel rechts.
+   Bewust één donker thema (zoals TradingView/MT5 's nachts): achtergrond en alle kleuren expliciet gezet. */
+:root {
+  color-scheme: dark;
+  --bg: #0f141b;
+  --panel: #151c25;
+  --panel-2: #1b2430;
+  --line: #263243;
+  --fg: #d5dce5;
+  --muted: #8392a5;
+  --accent: #e3a33b;
+  --up: #2bb39a;
+  --down: #e0565b;
+  --info: #5aa7e6;
+  --warn: #d9a441;
+  --ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.4 var(--ui); overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.app { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--line); }
+.brand { font-weight: 600; letter-spacing: .14em; font-size: 12px; color: var(--accent); }
+.ep-btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; }
+.ep-btn b { font-family: var(--mono); font-weight: 500; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 4px 9px; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.ctl { display: inline-flex; align-items: center; gap: 6px; }
+.ctl button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; min-width: 32px; padding: 4px 8px; }
+.ctl button:disabled { opacity: .4; cursor: default; }
+.clock { font-family: var(--mono); font-size: 13px; padding: 3px 8px; border-radius: 4px; background: var(--panel-2); }
+.clock.past { background: color-mix(in srgb, var(--warn) 22%, var(--panel-2)); }
+.spacer { flex: 1; }
+.dbstate { font-size: 12px; color: var(--muted); }
+.dbstate.bad { color: var(--down); }
+.main { display: grid; grid-template-columns: 44px minmax(0, 1fr) 300px; min-height: 0; }
+.tools { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 8px 0; overflow-y: auto; }
+.tools button { width: 32px; height: 32px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--muted);
+  display: grid; place-items: center; }
+.tools button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: var(--panel-2); }
+.tools svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+.tools hr { width: 24px; border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.swatch { width: 20px !important; height: 20px !important; border-radius: 50% !important; border: 2px solid transparent !important; }
+.swatch[aria-pressed="true"] { border-color: var(--fg) !important; }
+.chartwrap { position: relative; min-width: 0; min-height: 0; }
+#chart { position: absolute; inset: 0; }
+#overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+#overlay.active { pointer-events: auto; cursor: crosshair; }
+.banner { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 4; background: var(--panel-2);
+  border: 1px solid var(--warn); color: var(--fg); padding: 5px 12px; border-radius: 4px; font-size: 13px; display: flex; gap: 10px; align-items: center; }
+.banner button { background: var(--warn); color: #1a1407; border: 0; border-radius: 3px; padding: 2px 8px; font-weight: 600; }
+.textinput { position: absolute; z-index: 5; background: var(--panel-2); border: 1px solid var(--accent); padding: 2px 6px; width: 180px; }
+.side { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; display: flex; flex-direction: column; }
+.sec { padding: 12px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.sec h2 { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.dir { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dir button { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 7px; font-weight: 600; letter-spacing: .05em; }
+.dir button.buy[aria-pressed="true"] { background: var(--up); border-color: var(--up); color: #06231d; }
+.dir button.sell[aria-pressed="true"] { background: var(--down); border-color: var(--down); color: #2a0708; }
+.field { display: grid; grid-template-columns: 52px 1fr 30px; gap: 6px; align-items: center; }
+.field label { color: var(--muted); font-size: 12px; }
+.field input { background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px; font-family: var(--mono); font-size: 13px; min-width: 0; }
+.field input:disabled { opacity: .45; }
+.pick { background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; height: 26px; color: var(--muted); }
+.pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px; }
+textarea { resize: vertical; min-height: 34px; }
+.rr { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rr b { color: var(--fg); font-weight: 500; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.go { border: 0; border-radius: 4px; padding: 8px; font-weight: 600; background: var(--accent); color: #241603; }
+.go:disabled { opacity: .4; cursor: default; }
+.ghost { border: 1px solid var(--line); background: transparent; border-radius: 4px; padding: 6px 8px; font-size: 13px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.msg { font-size: 12px; color: var(--down); min-height: 1em; }
+.orders { display: grid; gap: 6px; }
+.ord { border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 4px; padding: 6px 8px; display: grid; gap: 4px;
+  font-size: 12px; background: var(--panel-2); }
+.ord.long { border-left-color: var(--up); } .ord.short { border-left-color: var(--down); }
+.ord .top { display: flex; justify-content: space-between; gap: 6px; font-family: var(--mono); }
+.ord .act { display: flex; gap: 6px; flex-wrap: wrap; }
+.ord .act button { font-size: 11px; padding: 2px 7px; border-radius: 3px; border: 1px solid var(--line); background: transparent; }
+.ord .mod { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; }
+.ord .mod input { background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 2px 4px; font-family: var(--mono); font-size: 11px; min-width: 0; }
+.pill { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 9px; background: var(--line); color: var(--fg); }
+.pill.doubt { background: color-mix(in srgb, var(--warn) 35%, transparent); }
+.pill.virt { background: color-mix(in srgb, var(--info) 35%, transparent); }
+.pos { color: var(--up); } .neg { color: var(--down); }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 10px; font-size: 12px; }
+.stats div { display: flex; justify-content: space-between; gap: 6px; }
+.stats span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); font-size: 12px; }
+.journal { display: grid; gap: 4px; max-height: 260px; overflow-y: auto; }
+.journal .j { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; font-size: 12px; font-family: var(--mono); align-items: center; }
+.modal { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 80%, transparent); z-index: 20; display: grid; place-items: center; padding: 16px; }
+.modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; width: min(760px, 100%); max-height: 90%; overflow: auto; display: grid; gap: 12px; }
+.modal h1 { margin: 0; font-size: 18px; font-weight: 600; }
+.modal p { margin: 0; color: var(--muted); max-width: 65ch; }
+.eps { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.eps button { text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: grid; gap: 4px; }
+.eps button:hover { border-color: var(--accent); }
+.eps .nm { font-family: var(--mono); font-weight: 500; }
+.eps .meta { font-size: 12px; color: var(--muted); }
+.bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 30; display: grid; gap: 6px; }
+.toast div { background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); padding: 7px 12px; border-radius: 4px; font-size: 13px; }
+.skipform { display: grid; gap: 6px; border: 1px dashed var(--line); border-radius: 4px; padding: 8px; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); z-index: 2; }
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .app { height: auto; }
+  .main { grid-template-columns: 44px minmax(0, 1fr); }
+  .chartwrap { height: 70vh; }
+  .side { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <span class="brand">KATSU REPLAY</span>
+    <button class="ep-btn" id="epBtn" title="Episode kiezen"><span id="epName">Kies een episode</span></button>
+    <div class="seg" id="tfSeg" role="group" aria-label="Timeframe"></div>
+    <div class="ctl">
+      <button id="back" title="Eén candle terug (←)" aria-label="Eén candle terug">◀</button>
+      <button id="play" title="Afspelen / pauzeren (spatie)" aria-label="Afspelen">▶︎</button>
+      <button id="fwd" title="Eén candle vooruit (→)" aria-label="Eén candle vooruit">▶|</button>
+      <select id="speed" aria-label="Snelheid" title="Candles per seconde">
+        <option value="1">1×</option><option value="2" selected>2×</option><option value="5">5×</option><option value="10">10×</option><option value="25">25×</option>
+      </select>
+      <label class="check" title="Afspelen stopt bij een vulling of exit"><input type="checkbox" id="autoPause" checked> stop bij order</label>
+    </div>
+    <span class="clock" id="clock">—</span>
+    <span class="spacer"></span>
+    <label class="check"><input type="checkbox" id="sessions"> sessies</label>
+    <span class="dbstate" id="dbState">opslag: verbinden…</span>
+  </header>
+
+  <div class="main">
+    <nav class="tools" aria-label="Tekengereedschap" id="tools">
+      <button data-tool="none" aria-pressed="true" title="Aanwijzer (Esc)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 2-2 6z"/></svg></button>
+      <button data-tool="hline" title="Horizontale lijn"><svg viewBox="0 0 24 24"><path d="M3 12h18"/></svg></button>
+      <button data-tool="line" title="Trendlijn"><svg viewBox="0 0 24 24"><path d="M4 19L20 5"/></svg></button>
+      <button data-tool="rect" title="Rechthoek / zone"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10"/></svg></button>
+      <button data-tool="text" title="Tekst"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13"/></svg></button>
+      <button data-tool="erase" title="Gum: klik op een tekening"><svg viewBox="0 0 24 24"><path d="M4 16l8-8 6 6-5 5H8z M10 19h10"/></svg></button>
+      <button id="extend" aria-pressed="true" title="Zones doortrekken naar rechts"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="8" height="8"/><path d="M11 12h10M18 9l3 3-3 3"/></svg></button>
+      <hr>
+      <div id="swatches" style="display:grid;gap:4px;justify-items:center"></div>
+      <hr>
+      <button id="clearAll" title="Alle tekeningen van deze episode wissen"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button>
+    </nav>
+
+    <div class="chartwrap">
+      <div id="chart"></div>
+      <canvas id="overlay"></canvas>
+      <div class="banner" id="pastBanner" hidden>Je kijkt terug — orders kan je pas weer plaatsen op het verste punt. <button id="toNow">Naar nu</button></div>
+      <div class="loading" id="loading" hidden>Episode laden…</div>
+    </div>
+
+    <aside class="side">
+      <section class="sec" aria-labelledby="tH">
+        <h2 id="tH">Order</h2>
+        <div class="dir"><button class="buy" id="dBuy" aria-pressed="true">KOPEN</button><button class="sell" id="dSell" aria-pressed="false">VERKOPEN</button></div>
+        <select id="otype" aria-label="Ordertype"><option value="market">Market (volgende candle)</option><option value="limit">Limit</option><option value="stop">Stop</option></select>
+        <div class="field"><label for="fE">Entry</label><input id="fE" inputmode="decimal" autocomplete="off"><button class="pick" data-pick="fE" title="Klik op de grafiek om de prijs te kiezen">⌖</button></div>
+        <div class="field"><label for="fS">SL</label><input id="fS" inputmode="decimal" autocomplete="off"><button class="pick" data-pick="fS" title="Klik op de grafiek om de prijs te kiezen">⌖</button></div>
+        <div class="field"><label for="fT">TP</label><input id="fT" inputmode="decimal" autocomplete="off"><button class="pick" data-pick="fT" title="Klik op de grafiek om de prijs te kiezen">⌖</button></div>
+        <div class="rr" id="rrInfo">Vul SL en TP in.</div>
+        <label class="check"><input type="checkbox" id="fDoubt"> twijfelgeval</label>
+        <textarea id="fWhy" placeholder="Waarom deze trade? (kort, mag leeg)" rows="2"></textarea>
+        <div class="msg" id="tMsg"></div>
+        <button class="go" id="place">Plaats order</button>
+      </section>
+
+      <section class="sec" aria-labelledby="sH">
+        <h2 id="sH">Gezien, niet genomen</h2>
+        <div class="row2"><button class="ghost" id="skipBtn">Gezien, niet genomen</button><button class="ghost" id="doubtSkipBtn">Twijfel, niet genomen</button></div>
+        <div class="skipform" id="skipForm" hidden>
+          <div class="empty" id="skipTitle"></div>
+          <div class="empty">Richting en (als je wil) de trade die je níet nam, met de velden hierboven. Zonder SL/TP wordt alleen het moment bewaard.</div>
+          <textarea id="skipWhy" placeholder="Waarom niet? (kort)" rows="2"></textarea>
+          <div class="row2"><button class="go" id="skipSave">Bewaren</button><button class="ghost" id="skipCancel">Annuleren</button></div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="oH">
+        <h2 id="oH">Lopend</h2>
+        <div class="orders" id="orders"><div class="empty">Geen open orders.</div></div>
+      </section>
+
+      <section class="sec" aria-labelledby="stH">
+        <h2 id="stH">Resultaat</h2>
+        <div class="stats" id="stats"></div>
+        <div class="journal" id="journal"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="modal" id="epModal">
+  <div class="box">
+    <h1>Kies een episode</h1>
+    <p>Elke episode is een willekeurig stuk van twee handelsweken uit 2020–2024, zonder datum. Je ziet weekdag en uur in Belgische tijd. Speel vooruit, teken, en neem trades zoals je dat live zou doen. Alles wordt automatisch bewaard.</p>
+    <div class="seg" id="mktSeg" role="group" aria-label="Markt"><button data-m="EURUSD" aria-pressed="true">EURUSD</button><button data-m="XAUUSD" aria-pressed="false">XAUUSD</button></div>
+    <div class="eps" id="epList"></div>
+    <div><button class="ghost" id="epClose">Sluiten</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+/*SIM_JS*/
+</script>
+<script>
+(() => {
+"use strict";
+const EPISODES = /*EPISODES*/[];
+const TFS = [["M3", 3], ["M5", 5], ["M10", 10], ["M15", 15], ["M30", 30], ["H1", 60], ["H4", 240]];
+const DAYS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+const COLORS = ["#e3a33b", "#5aa7e6", "#b48cf2", "#2bb39a", "#e0565b", "#e8e8e8", "#c8a14a"];
+const BE_OFFSET = 60;                      // Belgische tijd = server − 60 min
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// ---------------- toestand ----------------
+const S = {
+  ep: null, sym: "EURUSD", spec: null, digits: 5,
+  t: null, o: null, h: null, l: null, c: null, s: null, n: 0, start: 0,
+  groups: {}, tf: 15, cursor: 0, maxCursor: 0, lastG: -1, lastTf: null,
+  orders: [], decisions: [], drawings: [], playing: false, timer: null,
+  tool: "none", color: COLORS[0], extend: true, pick: null, draft: null, dir: 1,
+  allTrades: new Map(), allDecisions: new Map(), progress: new Map(),
+};
+let db = null;
+
+// ---------------- opslag ----------------
+const chains = new Map();
+function save(path, body) {
+  if (!db) return Promise.resolve();
+  const prev = chains.get(path) || Promise.resolve();
+  const next = prev.then(() => db.doc(path).set(JSON.parse(JSON.stringify(body)))).catch((e) => {
+    setDb(false, e && e.code === "quota_exceeded" ? "opslag vol" : "opslaan mislukt");
+  });
+  chains.set(path, next);
+  return next;
+}
+function setDb(ok, txt) { const el = $("dbState"); el.textContent = "opslag: " + txt; el.classList.toggle("bad", !ok); }
+const debounced = new Map();
+function saveLater(path, fn, ms) {
+  clearTimeout(debounced.get(path));
+  debounced.set(path, setTimeout(() => save(path, fn()), ms));
+}
+
+async function initDb() {
+  try {
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+  } catch (e) { db = null; }
+  if (!db) { setDb(false, "niet beschikbaar — niets wordt bewaard"); return; }
+  setDb(true, "laden…");
+  try {
+    const [tr, de, pr] = await Promise.all([db.collection("trades").get(), db.collection("beslissingen").get(),
+      db.collection("voortgang").get()]);
+    tr.docs.forEach((d) => S.allTrades.set(d.id, d.data()));
+    de.docs.forEach((d) => S.allDecisions.set(d.id, d.data()));
+    pr.docs.forEach((d) => S.progress.set(d.id, d.data()));
+    setDb(true, "bewaard");
+  } catch (e) { setDb(false, "laden mislukt"); }
+  renderEpList(); renderStats();
+}
+
+// ---------------- data ----------------
+async function loadEpisode(id) {
+  const res = await fetch("episodes/" + id + ".txt");
+  if (!res.ok) throw new Error("episode niet gevonden");
+  let txt = (await res.text()).trim();
+  if (txt[0] !== "{") {                                  // base64 van gzip-JSON
+    const bin = atob(txt); const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"));
+    txt = await new Response(ds).text();
+  }
+  const d = JSON.parse(txt);
+  const n = d.o.length, p = d.point, f = Math.pow(10, d.digits);
+  const t = new Float64Array(n), o = new Float64Array(n), h = new Float64Array(n), l = new Float64Array(n), c = new Float64Array(n), s = new Float64Array(n);
+  let prev = d.base, tt = d.t0;
+  for (let i = 0; i < n; i++) {
+    tt += d.dt[i]; const oi = prev + d.o[i], ci = oi + d.c[i];
+    t[i] = tt; o[i] = Math.round(oi * p * f) / f; c[i] = Math.round(ci * p * f) / f;
+    h[i] = Math.round((Math.max(oi, ci) + d.h[i]) * p * f) / f; l[i] = Math.round((Math.min(oi, ci) - d.l[i]) * p * f) / f;
+    s[i] = d.s[i]; prev = ci;
+  }
+  return { id: d.id, sym: d.sym, digits: d.digits, start: d.start, t, o, h, l, c, s, n };
+}
+
+function groupsFor(tf) {
+  if (S.groups[tf]) return S.groups[tf];
+  const g = []; let key = null, cur = null;
+  for (let i = 0; i < S.n; i++) {
+    const k = Math.floor(S.t[i] / tf);
+    if (k !== key) { if (cur) g.push(cur); key = k; cur = { t: k * tf, s: i, e: i, o: S.o[i], h: S.h[i], l: S.l[i], c: S.c[i] }; }
+    else { cur.e = i; if (S.h[i] > cur.h) cur.h = S.h[i]; if (S.l[i] < cur.l) cur.l = S.l[i]; cur.c = S.c[i]; }
+  }
+  if (cur) g.push(cur);
+  S.groups[tf] = g; return g;
+}
+function groupAt(gr, i) { let lo = 0, hi = gr.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (gr[m].s <= i) lo = m; else hi = m - 1; } return lo; }
+function barAt(gr, g, cursor) {
+  const G = gr[g];
+  if (cursor >= G.e) return { time: G.t * 60, open: G.o, high: G.h, low: G.l, close: G.c };
+  let hi = -Infinity, lo = Infinity;
+  for (let i = G.s; i <= cursor; i++) { if (S.h[i] > hi) hi = S.h[i]; if (S.l[i] < lo) lo = S.l[i]; }
+  return { time: G.t * 60, open: G.o, high: hi, low: lo, close: S.c[cursor] };
+}
+
+// ---------------- tijd zonder datum ----------------
+function beLabel(serverMin, withDay = true) {
+  const m = serverMin - BE_OFFSET; const day = Math.floor(m / 1440); const mm = ((m % 1440) + 1440) % 1440;
+  const hh = String(Math.floor(mm / 60)).padStart(2, "0"), mi = String(mm % 60).padStart(2, "0");
+  return (withDay ? DAYS[(day + 4) % 7] + " " : "") + hh + ":" + mi;
+}
+
+// ---------------- grafiek ----------------
+const LC = window.LightweightCharts;
+const chart = LC.createChart($("chart"), {
+  autoSize: true,
+  layout: { background: { type: "solid", color: css("--bg") }, textColor: css("--muted"), fontFamily: "IBM Plex Mono, monospace", fontSize: 11 },
+  grid: { vertLines: { color: "rgba(38,50,67,.45)" }, horzLines: { color: "rgba(38,50,67,.45)" } },
+  rightPriceScale: { borderColor: css("--line") },
+  timeScale: { borderColor: css("--line"), rightOffset: 12, barSpacing: 8, timeVisible: true, secondsVisible: false,
+    tickMarkFormatter: (time) => beLabel(time / 60, true) },
+  localization: { timeFormatter: (time) => beLabel(time / 60, true) },
+  crosshair: { mode: 0 },
+});
+const series = chart.addCandlestickSeries({ upColor: css("--up"), downColor: css("--down"), borderVisible: false,
+  wickUpColor: css("--up"), wickDownColor: css("--down") });
+let priceLines = [];
+
+function render(force) {
+  if (!S.n) return;
+  const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor);
+  if (force || S.lastTf !== S.tf || g < S.lastG || g > S.lastG + 1) {
+    const data = []; for (let k = 0; k < g; k++) data.push({ time: gr[k].t * 60, open: gr[k].o, high: gr[k].h, low: gr[k].l, close: gr[k].c });
+    data.push(barAt(gr, g, S.cursor)); series.setData(data);
+  } else {
+    if (g === S.lastG + 1) series.update(barAt(gr, S.lastG, S.cursor));
+    series.update(barAt(gr, g, S.cursor));
+  }
+  S.lastG = g; S.lastTf = S.tf;
+  $("clock").textContent = beLabel(S.t[S.cursor] + 1);
+  const past = S.cursor < S.maxCursor;
+  $("clock").classList.toggle("past", past); $("pastBanner").hidden = !past;
+  $("place").disabled = past || !S.ep; $("skipBtn").disabled = past || !S.ep; $("doubtSkipBtn").disabled = past || !S.ep;
+  $("fwd").disabled = S.cursor >= S.n - 1; $("back").disabled = S.cursor <= 0;
+  updatePriceLines(); renderOrders(); updateRR();
+}
+
+function updatePriceLines() {
+  priceLines.forEach((pl) => series.removePriceLine(pl)); priceLines = [];
+  const add = (price, color, title, style) => { if (isFinite(price)) priceLines.push(series.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title })); };
+  S.orders.filter((o) => o.ep === S.ep && (o.status === "pending" || o.status === "open")).forEach((o) => {
+    const tag = o.virtual ? "hyp " : "";
+    if (o.status === "pending" && o.type !== "market") add(o.entry, css("--info"), tag + "entry", 2);
+    if (o.status === "open") add(o.fill, css("--info"), tag + (o.dir > 0 ? "long" : "short"), 0);
+    add(o.sl, css("--down"), tag + "SL", o.virtual ? 2 : 0); add(o.tp, css("--up"), tag + "TP", o.virtual ? 2 : 0);
+  });
+  const e = num("fE"), sl = num("fS"), tp = num("fT");
+  if ($("otype").value !== "market") add(e, "rgba(90,167,230,.6)", "", 3);
+  add(sl, "rgba(224,86,91,.6)", "", 3); add(tp, "rgba(43,179,154,.6)", "", 3);
+}
+
+// ---------------- tekenlaag ----------------
+const ov = $("overlay"); const ctx = ov.getContext("2d");
+function sizeOverlay() { const r = ov.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
+  ov.width = Math.round(r.width * dpr); ov.height = Math.round(r.height * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+new ResizeObserver(sizeOverlay).observe(ov);
+function timeToX(tm) {
+  const gr = groupsFor(S.tf); if (!gr.length) return null;
+  const last = groupAt(gr, S.cursor);
+  let lo = 0, hi = last; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (gr[m].t <= tm) lo = m; else hi = m - 1; }
+  let logical;
+  if (tm >= gr[last].t) logical = last + (tm - gr[last].t) / S.tf;
+  else if (tm < gr[0].t) logical = (tm - gr[0].t) / S.tf;
+  else logical = lo + Math.min((tm - gr[lo].t) / S.tf, 0.999);
+  return chart.timeScale().logicalToCoordinate(logical);
+}
+function xToTime(x) {
+  const lg = chart.timeScale().coordinateToLogical(x); if (lg == null) return null;
+  const gr = groupsFor(S.tf); const last = groupAt(gr, S.cursor);
+  const i = Math.max(0, Math.min(Math.floor(lg), last)); return gr[i].t + (lg - i) * S.tf;
+}
+const yToP = (y) => series.coordinateToPrice(y), pToY = (p) => series.priceToCoordinate(p);
+const plotW = () => chart.timeScale().width();
+
+function drawShape(d, preview) {
+  ctx.strokeStyle = d.color; ctx.fillStyle = d.color; ctx.lineWidth = 1.5; ctx.setLineDash(preview ? [4, 3] : []);
+  if (d.type === "hline") { const y = pToY(d.p1); if (y == null) return; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(plotW(), y); ctx.stroke(); }
+  else if (d.type === "line") { const x1 = timeToX(d.t1), y1 = pToY(d.p1), x2 = timeToX(d.t2), y2 = pToY(d.p2); if ([x1, y1, x2, y2].some((v) => v == null)) return;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+  else if (d.type === "rect") { const x1 = timeToX(d.t1), y1 = pToY(d.p1); let x2 = d.extend ? plotW() : timeToX(d.t2); const y2 = pToY(d.p2);
+    if ([x1, y1, x2, y2].some((v) => v == null)) return; const x = Math.min(x1, x2), y = Math.min(y1, y2), w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+    ctx.globalAlpha = 0.18; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; ctx.strokeRect(x, y, w, h); }
+  else if (d.type === "text") { const x = timeToX(d.t1), y = pToY(d.p1); if (x == null || y == null) return; ctx.font = "12px IBM Plex Sans Condensed, sans-serif"; ctx.fillText(d.text, x, y); }
+}
+function drawSessions() {
+  if (!$("sessions").checked || !S.n) return;
+  const gr = groupsFor(S.tf); const first = gr[0].t, last = S.t[S.cursor];
+  const bands = [[1 * 60, 9 * 60, "rgba(180,140,242,.06)"], [9 * 60, 17 * 60 + 30, "rgba(90,167,230,.06)"], [14 * 60 + 30, 22 * 60, "rgba(227,163,59,.06)"]];
+  const h = ov.getBoundingClientRect().height;
+  for (let day = Math.floor((first - BE_OFFSET) / 1440); day * 1440 + BE_OFFSET <= last + 1440; day++) {
+    bands.forEach(([a, b, col]) => { const x1 = timeToX(day * 1440 + a + BE_OFFSET), x2 = timeToX(day * 1440 + b + BE_OFFSET);
+      if (x1 == null || x2 == null || x2 < 0 || x1 > plotW()) return; ctx.fillStyle = col; ctx.fillRect(x1, 0, x2 - x1, h); });
+  }
+}
+function drawDaySeparators() {
+  if (!S.n || S.tf >= 240) return;
+  const gr = groupsFor(S.tf); const first = gr[0].t, last = S.t[S.cursor]; const h = ov.getBoundingClientRect().height;
+  ctx.strokeStyle = "rgba(131,146,165,.18)"; ctx.setLineDash([2, 4]); ctx.lineWidth = 1;
+  for (let day = Math.floor((first - BE_OFFSET) / 1440) + 1; day * 1440 + BE_OFFSET <= last; day++) {
+    const x = timeToX(day * 1440 + BE_OFFSET); if (x == null || x < 0 || x > plotW()) continue;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+function frame() {
+  const r = ov.getBoundingClientRect(); ctx.clearRect(0, 0, r.width, r.height);
+  if (S.n) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotW(), r.height); ctx.clip();
+    drawSessions(); drawDaySeparators();
+    S.drawings.forEach((d) => drawShape(d, false)); if (S.draft) drawShape(S.draft, true);
+    ctx.restore();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function overlayPoint(ev) { const r = ov.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
+function setOverlayActive() { ov.classList.toggle("active", S.tool !== "none" || !!S.pick); }
+function setTool(t) { S.tool = t; S.draft = null; document.querySelectorAll("#tools [data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === t))); setOverlayActive(); }
+
+ov.addEventListener("pointerdown", (ev) => {
+  if (!S.n) return;
+  const { x, y } = overlayPoint(ev); const tm = xToTime(x), pr = yToP(y);
+  if (S.pick) { if (pr != null) { $(S.pick).value = fmt(pr); onTicketChange(); } S.pick = null; document.querySelectorAll(".pick").forEach((b) => b.setAttribute("aria-pressed", "false")); setOverlayActive(); return; }
+  if (tm == null || pr == null) return;
+  if (S.tool === "erase") { eraseAt(x, y); return; }
+  if (S.tool === "hline") { addDrawing({ type: "hline", p1: pr, color: S.color }); setTool("none"); return; }
+  if (S.tool === "text") { askText(x, y, tm, pr); return; }
+  if (S.tool === "line" || S.tool === "rect") {
+    if (!S.draft) S.draft = { type: S.tool, t1: tm, p1: pr, t2: tm, p2: pr, color: S.color, extend: S.tool === "rect" && S.extend };
+    else { S.draft.t2 = tm; S.draft.p2 = pr; addDrawing(S.draft); S.draft = null; setTool("none"); }
+  }
+});
+ov.addEventListener("pointermove", (ev) => { if (!S.draft) return; const { x, y } = overlayPoint(ev); const tm = xToTime(x), pr = yToP(y); if (tm != null && pr != null) { S.draft.t2 = tm; S.draft.p2 = pr; } });
+
+function askText(x, y, tm, pr) {
+  const inp = document.createElement("input"); inp.className = "textinput"; inp.style.left = x + "px"; inp.style.top = (y - 14) + "px";
+  inp.placeholder = "Tekst, Enter om te plaatsen"; inp.id = "txtIn"; ov.parentElement.appendChild(inp); inp.focus();
+  const done = (ok) => { if (ok && inp.value.trim()) addDrawing({ type: "text", t1: tm, p1: pr, text: inp.value.trim(), color: S.color }); inp.remove(); setTool("none"); };
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); e.stopPropagation(); });
+  inp.addEventListener("blur", () => done(true));
+}
+function distSeg(px, py, x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1; const L = dx * dx + dy * dy || 1; let u = ((px - x1) * dx + (py - y1) * dy) / L; u = Math.max(0, Math.min(1, u)); return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy)); }
+function eraseAt(x, y) {
+  let best = -1, bd = 8;
+  S.drawings.forEach((d, i) => {
+    let dist = Infinity;
+    if (d.type === "hline") { const yy = pToY(d.p1); if (yy != null) dist = Math.abs(yy - y); }
+    else if (d.type === "line") { const a = [timeToX(d.t1), pToY(d.p1), timeToX(d.t2), pToY(d.p2)]; if (!a.some((v) => v == null)) dist = distSeg(x, y, ...a); }
+    else if (d.type === "rect") { const x1 = timeToX(d.t1), x2 = d.extend ? plotW() : timeToX(d.t2), y1 = pToY(d.p1), y2 = pToY(d.p2);
+      if (![x1, x2, y1, y2].some((v) => v == null)) { const inside = x >= Math.min(x1, x2) && x <= Math.max(x1, x2) && y >= Math.min(y1, y2) && y <= Math.max(y1, y2); dist = inside ? 0 : Infinity; } }
+    else if (d.type === "text") { const xx = timeToX(d.t1), yy = pToY(d.p1); if (xx != null && yy != null && x >= xx - 4 && x <= xx + 8 * d.text.length && y >= yy - 14 && y <= yy + 4) dist = 0; }
+    if (dist < bd) { bd = dist; best = i; }
+  });
+  if (best >= 0) { S.drawings.splice(best, 1); persistDrawings(); }
+}
+function addDrawing(d) { S.drawings.push(Object.assign({}, d)); persistDrawings(); }
+function persistDrawings() { if (S.ep) saveLater("tekeningen/" + S.ep, () => ({ ep: S.ep, items: S.drawings }), 800); }
+
+// ---------------- replay ----------------
+function processUpTo(target) {
+  // Speelt elke nieuwe M1-candle af voor alle lopende orders. Geeft de index terug waar afspelen moet stoppen
+  // (een echte order gevuld of gesloten tijdens afspelen met "stop bij order"), anders null.
+  for (let i = S.maxCursor + 1; i <= target; i++) {
+    const bar = { t: S.t[i], o: S.o[i], h: S.h[i], l: S.l[i], c: S.c[i], s: S.s[i] };
+    let realEvent = false;
+    for (const o of S.orders) {
+      if (o.ep !== S.ep || (o.status !== "pending" && o.status !== "open")) continue;
+      if (o.status === "pending" && i < o.fromIdx) continue;
+      if (o.status === "open" && i <= o.fillIdx) continue;
+      const ev = KatsuSim.step(o, bar, S.spec);
+      if (!ev.length) continue;
+      if (ev.includes("gevuld")) o.fillIdx = i;
+      S.maxCursor = i;
+      persistOrder(o); realEvent = realEvent || !o.virtual;
+      toast((o.virtual ? "Hypothetisch: " : "") + (o.status === "closed" ? o.reason + " " + fmtR(o.rNet)
+        : o.status === "cancelled" ? "order geannuleerd" : "order gevuld"));
+    }
+    S.maxCursor = i;
+    if (realEvent && S.playing && $("autoPause").checked && i < target) return i;
+  }
+  return null;
+}
+function goTo(target) {
+  target = Math.max(0, Math.min(S.n - 1, target));
+  if (target > S.maxCursor) {
+    const stopAt = processUpTo(target);
+    S.cursor = stopAt == null ? target : stopAt;
+    if (stopAt != null) pause();
+  } else S.cursor = target;
+  render(false); saveProgress();
+}
+function stepFwd() { const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor); if (S.cursor < gr[g].e) goTo(gr[g].e); else if (g + 1 < gr.length) goTo(gr[g + 1].e); else pause(); }
+function stepBack() { const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor); if (g > 0) goTo(gr[g - 1].e); }
+function play() { if (!S.n) return; S.playing = true; $("play").textContent = "❚❚"; $("play").setAttribute("aria-label", "Pauzeren");
+  const tick = () => { if (!S.playing) return; if (S.cursor < S.maxCursor) { goTo(S.maxCursor); } stepFwd(); if (S.cursor >= S.n - 1) pause(); };
+  clearInterval(S.timer); S.timer = setInterval(tick, 1000 / Number($("speed").value)); }
+function pause() { S.playing = false; clearInterval(S.timer); $("play").textContent = "▶︎"; $("play").setAttribute("aria-label", "Afspelen"); saveProgress(true); }
+function saveProgress(now) { if (!S.ep) return; S.progress.set(S.ep, { ep: S.ep, cursor: S.cursor, maxCursor: S.maxCursor, n: S.n, start: S.start });
+  const body = () => S.progress.get(S.ep); if (now) save("voortgang/" + S.ep, body()); else saveLater("voortgang/" + S.ep, body, 3000); }
+
+// ---------------- orders ----------------
+const num = (id) => { const v = parseFloat(String($(id).value).replace(",", ".")); return isFinite(v) ? v : NaN; };
+const fmt = (p) => p.toFixed(S.digits);
+const fmtR = (r) => (r >= 0 ? "+" : "") + r.toFixed(2) + "R";
+const curBid = () => S.c[S.cursor], curAsk = () => S.c[S.cursor] + KatsuSim.spread({ t: S.t[S.cursor], s: S.s[S.cursor] }, S.spec);
+function newId(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function validate(dir, type, e, sl, tp) {
+  if (!isFinite(sl) || !isFinite(tp)) return "Vul SL en TP in.";
+  const ref = type === "market" ? (dir > 0 ? curAsk() : curBid()) : e;
+  if (type !== "market" && !isFinite(e)) return "Vul een entryprijs in.";
+  if (dir > 0 && !(sl < ref && tp > ref)) return "Bij kopen: SL onder en TP boven de entry.";
+  if (dir < 0 && !(sl > ref && tp < ref)) return "Bij verkopen: SL boven en TP onder de entry.";
+  if (type === "limit" && dir > 0 && e >= curAsk()) return "Een buy limit ligt onder de huidige prijs (anders: stop).";
+  if (type === "limit" && dir < 0 && e <= curBid()) return "Een sell limit ligt boven de huidige prijs (anders: stop).";
+  if (type === "stop" && dir > 0 && e <= curAsk()) return "Een buy stop ligt boven de huidige prijs (anders: limit).";
+  if (type === "stop" && dir < 0 && e >= curBid()) return "Een sell stop ligt onder de huidige prijs (anders: limit).";
+  return "";
+}
+function updateRR() {
+  if (!S.n) return; const dir = S.dir, type = $("otype").value; const e = type === "market" ? (dir > 0 ? curAsk() : curBid()) : num("fE");
+  const sl = num("fS"), tp = num("fT"); const pip = S.spec.pip;
+  if (!isFinite(e) || !isFinite(sl) || !isFinite(tp)) { $("rrInfo").textContent = "Vul SL en TP in."; return; }
+  const risk = Math.abs(e - sl), rew = Math.abs(tp - e);
+  const cost = (S.spec.minSpread + 2 * S.spec.slip + S.spec.comm) / risk;
+  $("rrInfo").innerHTML = `risico <b>${(risk / pip).toFixed(1)}</b> pips · doel <b>${(rew / pip).toFixed(1)}</b> pips · RR <b>${(rew / risk).toFixed(2)}</b><br>kosten ≈ <b>${cost.toFixed(2)}R</b> per trade`;
+}
+function onTicketChange() { $("fE").disabled = $("otype").value === "market"; updateRR(); updatePriceLines(); $("tMsg").textContent = ""; }
+function setDir(d) { S.dir = d; $("dBuy").setAttribute("aria-pressed", String(d > 0)); $("dSell").setAttribute("aria-pressed", String(d < 0)); onTicketChange(); }
+
+function placeOrder(virtual, kind) {
+  const dir = S.dir; let type = $("otype").value; const e = num("fE"), sl = num("fS"), tp = num("fT");
+  const base = { ep: S.ep, sym: S.sym, tf: tfName(S.tf), placedT: S.t[S.cursor] + 1, placedIdx: S.cursor, fromIdx: S.cursor + 1,
+    dir, doubt: virtual ? kind === "twijfel_niet" : $("fDoubt").checked, createdAt: Date.now(), mods: [] };
+  if (virtual) {
+    const why = $("skipWhy").value.trim();
+    const dec = Object.assign(base, { id: newId("b"), virtual: true, kind, why, type: null, entry: null, sl: null, tp: null, status: "zonder_trade" });
+    if (isFinite(sl) && isFinite(tp)) {
+      const msg = validate(dir, type, e, sl, tp); if (msg) { $("tMsg").textContent = "Hypothetische trade: " + msg; return false; }
+      Object.assign(dec, { type, entry: type === "market" ? null : e, sl, tp, status: "pending" });
+      S.orders.push(dec); clearTicket();
+    }
+    S.decisions.push(dec); persistOrder(dec); toast(kind === "twijfel_niet" ? "Twijfel, niet genomen: bewaard" : "Gezien, niet genomen: bewaard");
+    return true;
+  }
+  const msg = validate(dir, type, e, sl, tp); if (msg) { $("tMsg").textContent = msg; return false; }
+  const o = Object.assign(base, { id: newId("t"), virtual: false, type, entry: type === "market" ? null : e, sl, tp, why: $("fWhy").value.trim(), status: "pending" });
+  S.orders.push(o); persistOrder(o); toast("Order geplaatst"); clearTicket();
+  render(false); return true;
+}
+function clearTicket() { ["fE", "fS", "fT", "fWhy"].forEach((id) => ($(id).value = "")); $("fDoubt").checked = false; onTicketChange(); }
+function persistOrder(o) {
+  const body = Object.assign({}, o); delete body.closeNext;
+  if (o.virtual) { S.allDecisions.set(o.id, body); save("beslissingen/" + o.id, body); }
+  else { S.allTrades.set(o.id, body); save("trades/" + o.id, body); }
+  saveProgress(true); renderStats();
+}
+
+function renderOrders() {
+  const box = $("orders"); box.textContent = "";
+  const list = S.orders.filter((o) => o.ep === S.ep && (o.status === "pending" || o.status === "open"));
+  if (!list.length) { const d = document.createElement("div"); d.className = "empty"; d.textContent = "Geen open orders."; box.appendChild(d); return; }
+  const past = S.cursor < S.maxCursor;
+  list.forEach((o) => {
+    const el = document.createElement("div"); el.className = "ord " + (o.dir > 0 ? "long" : "short");
+    const top = document.createElement("div"); top.className = "top";
+    const left = document.createElement("span");
+    left.textContent = (o.dir > 0 ? "LONG " : "SHORT ") + (o.status === "pending" ? (o.type + (o.entry != null ? " " + fmt(o.entry) : "")) : "@" + fmt(o.fill));
+    const right = document.createElement("span");
+    if (o.status === "open") { const px = o.dir > 0 ? curBid() : curAsk(); const r = o.dir * (px - o.fill) / Math.abs(o.fill - o.slAtFill); right.textContent = fmtR(r); right.className = r >= 0 ? "pos" : "neg"; }
+    else right.textContent = "wacht";
+    top.append(left, right); el.appendChild(top);
+    const info = document.createElement("div"); info.textContent = `SL ${fmt(o.sl)} · TP ${fmt(o.tp)}`; el.appendChild(info);
+    const tags = document.createElement("div"); tags.className = "act";
+    if (o.virtual) { const p = document.createElement("span"); p.className = "pill virt"; p.textContent = "hypothetisch"; tags.appendChild(p); }
+    if (o.doubt) { const p = document.createElement("span"); p.className = "pill doubt"; p.textContent = "twijfel"; tags.appendChild(p); }
+    if (!o.virtual && !past) {
+      const mk = (txt, fn) => { const b = document.createElement("button"); b.textContent = txt; b.addEventListener("click", fn); tags.appendChild(b); };
+      if (o.status === "pending") mk("Annuleer", () => { o.status = "cancelled"; o.exitT = S.t[S.cursor]; o.cancelledByUser = true; persistOrder(o); render(false); });
+      if (o.status === "open") mk(o.closeNext ? "Sluit op volgende candle ✓" : "Sluit", () => { o.closeNext = true; o.closeRequestedT = S.t[S.cursor]; persistOrder(o); render(false); });
+      mk("SL/TP", () => { const m = el.querySelector(".mod"); m.hidden = !m.hidden; });
+    }
+    el.appendChild(tags);
+    if (!o.virtual) {
+      const mod = document.createElement("div"); mod.className = "mod"; mod.hidden = true;
+      const a = document.createElement("input"); a.value = fmt(o.sl); a.setAttribute("aria-label", "Nieuwe SL"); a.id = "msl_" + o.id;
+      const b = document.createElement("input"); b.value = fmt(o.tp); b.setAttribute("aria-label", "Nieuwe TP"); b.id = "mtp_" + o.id;
+      const ok = document.createElement("button"); ok.textContent = "OK";
+      ok.addEventListener("click", () => {
+        const sl = parseFloat(a.value.replace(",", ".")), tp = parseFloat(b.value.replace(",", "."));
+        const ref = o.status === "open" ? (o.dir > 0 ? curBid() : curAsk()) : (o.entry ?? (o.dir > 0 ? curAsk() : curBid()));
+        if (!(isFinite(sl) && isFinite(tp)) || (o.dir > 0 && !(sl < ref && tp > ref)) || (o.dir < 0 && !(sl > ref && tp < ref))) { toast("SL/TP ongeldig t.o.v. de prijs"); return; }
+        o.mods.push({ t: S.t[S.cursor] + 1, sl, tp }); o.sl = sl; o.tp = tp; persistOrder(o); render(false);
+      });
+      mod.append(a, b, ok); el.appendChild(mod);
+    }
+    box.appendChild(el);
+  });
+}
+
+function renderStats() {
+  const closed = [...S.allTrades.values()].filter((o) => o.status === "closed");
+  const sum = (a) => a.reduce((x, o) => x + o.rNet, 0);
+  const wins = closed.filter((o) => o.rNet > 0).length;
+  const doubt = closed.filter((o) => o.doubt), sure = closed.filter((o) => !o.doubt);
+  const hyp = [...S.allDecisions.values()].filter((o) => o.status === "closed");
+  const rows = [["trades", closed.length], ["winrate", closed.length ? Math.round(100 * wins / closed.length) + "%" : "—"],
+    ["totaal", closed.length ? fmtR(sum(closed)) : "—"], ["gem.", closed.length ? fmtR(sum(closed) / closed.length) : "—"],
+    ["zeker", sure.length ? `${sure.length} · ${fmtR(sum(sure) / sure.length)}` : "—"], ["twijfel", doubt.length ? `${doubt.length} · ${fmtR(sum(doubt) / doubt.length)}` : "—"],
+    ["niet genomen", S.allDecisions.size], ["hyp. gem.", hyp.length ? fmtR(sum(hyp) / hyp.length) : "—"]];
+  const st = $("stats"); st.textContent = "";
+  rows.forEach(([k, v]) => { const d = document.createElement("div"); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("span"); b.textContent = v; d.append(a, b); st.appendChild(d); });
+  const j = $("journal"); j.textContent = "";
+  const mine = [...S.allTrades.values(), ...S.allDecisions.values()].filter((o) => o.ep === S.ep && o.status === "closed").sort((a, b) => b.exitT - a.exitT);
+  if (!mine.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = S.ep ? "Nog geen afgesloten trades in deze episode." : "Kies een episode om te beginnen."; j.appendChild(e); return; }
+  mine.forEach((o) => { const r = document.createElement("div"); r.className = "j";
+    const a = document.createElement("span"); a.textContent = beLabel(o.fillT ?? o.placedT);
+    const b = document.createElement("span"); b.textContent = (o.dir > 0 ? "L " : "S ") + o.reason + (o.virtual ? " (hyp)" : "") + (o.doubt ? " ?" : "");
+    const c = document.createElement("span"); c.textContent = fmtR(o.rNet); c.className = o.rNet >= 0 ? "pos" : "neg"; r.append(a, b, c); j.appendChild(r); });
+}
+
+// ---------------- episodes ----------------
+let mkt = "EURUSD";
+function renderEpList() {
+  const box = $("epList"); box.textContent = "";
+  EPISODES.filter((e) => e.sym === mkt).forEach((e) => {
+    const b = document.createElement("button"); const pr = S.progress.get(e.id);
+    const done = pr ? Math.max(0, Math.min(1, (pr.maxCursor - pr.start) / Math.max(1, pr.n - 1 - pr.start))) : 0;
+    const nTr = [...S.allTrades.values()].filter((o) => o.ep === e.id).length;
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = (e.sym === "EURUSD" ? "EURUSD " : "XAUUSD ") + "#" + e.id.slice(3);
+    const meta = document.createElement("span"); meta.className = "meta"; meta.textContent = `${Math.round(done * 100)}% gespeeld · ${nTr} trades`;
+    const bar = document.createElement("div"); bar.className = "bar"; const i = document.createElement("i"); i.style.width = (done * 100) + "%"; bar.appendChild(i);
+    b.append(nm, meta, bar); b.addEventListener("click", () => openEpisode(e.id)); box.appendChild(b);
+  });
+}
+document.querySelectorAll("#mktSeg button").forEach((b) => b.addEventListener("click", () => { mkt = b.dataset.m;
+  document.querySelectorAll("#mktSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderEpList(); }));
+
+async function openEpisode(id) {
+  pause(); $("epModal").hidden = true; $("loading").hidden = false;
+  try {
+    const d = await loadEpisode(id);
+    Object.assign(S, { ep: id, sym: d.sym, digits: d.digits, spec: KatsuSim.SPECS[d.sym], t: d.t, o: d.o, h: d.h, l: d.l, c: d.c, s: d.s, n: d.n, start: d.start, groups: {}, lastG: -1, lastTf: null });
+    const pr = S.progress.get(id);
+    S.maxCursor = pr ? pr.maxCursor : d.start - 1; S.cursor = pr ? Math.min(pr.cursor, S.maxCursor) : S.maxCursor;
+    S.orders = [...S.allTrades.values(), ...S.allDecisions.values()].filter((o) => o.ep === id).map((o) => Object.assign({}, o));
+    S.decisions = S.orders.filter((o) => o.virtual);
+    S.drawings = [];
+    if (db) { try { const snap = await db.doc("tekeningen/" + id).get(); if (snap.exists) S.drawings = (snap.data().items || []).map((x) => Object.assign({}, x)); } catch (e) {} }
+    series.applyOptions({ priceFormat: { type: "price", precision: d.digits, minMove: Math.pow(10, -d.digits) } });
+    $("epName").innerHTML = ""; const b = document.createElement("b"); b.textContent = (d.sym) + " #" + id.slice(3); $("epName").appendChild(b);
+    try { localStorage.setItem("katsuReplayEp", id); } catch (e) {}
+    render(true); chart.timeScale().scrollToRealTime(); renderStats(); onTicketChange();
+  } catch (e) { toast("Episode laden mislukt: " + e.message); $("epModal").hidden = false; }
+  $("loading").hidden = true;
+}
+
+// ---------------- UI ----------------
+function tfName(m) { return TFS.find((x) => x[1] === m)[0]; }
+TFS.forEach(([nm, m]) => { const b = document.createElement("button"); b.textContent = nm; b.setAttribute("aria-pressed", String(m === S.tf));
+  b.addEventListener("click", () => { S.tf = m; document.querySelectorAll("#tfSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); render(true); chart.timeScale().scrollToRealTime(); });
+  $("tfSeg").appendChild(b); });
+COLORS.forEach((col, i) => { const b = document.createElement("button"); b.className = "swatch"; b.style.background = col; b.title = "Kleur"; b.setAttribute("aria-label", "Kleur " + (i + 1));
+  b.setAttribute("aria-pressed", String(i === 0)); b.addEventListener("click", () => { S.color = col; document.querySelectorAll(".swatch").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); });
+  $("swatches").appendChild(b); });
+document.querySelectorAll("#tools [data-tool]").forEach((b) => b.addEventListener("click", () => setTool(S.tool === b.dataset.tool ? "none" : b.dataset.tool)));
+$("extend").addEventListener("click", () => { S.extend = !S.extend; $("extend").setAttribute("aria-pressed", String(S.extend)); });
+let clearArmed = false;
+$("clearAll").addEventListener("click", () => { if (!clearArmed) { clearArmed = true; toast("Nog eens klikken om alle tekeningen te wissen"); setTimeout(() => (clearArmed = false), 3000); return; }
+  clearArmed = false; S.drawings = []; persistDrawings(); });
+document.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", () => { const on = S.pick !== b.dataset.pick; S.pick = on ? b.dataset.pick : null;
+  document.querySelectorAll(".pick").forEach((x) => x.setAttribute("aria-pressed", String(on && x === b))); setTool("none"); setOverlayActive(); }));
+["fE", "fS", "fT"].forEach((id) => $(id).addEventListener("input", onTicketChange));
+$("otype").addEventListener("change", onTicketChange);
+$("dBuy").addEventListener("click", () => setDir(1)); $("dSell").addEventListener("click", () => setDir(-1));
+$("place").addEventListener("click", () => placeOrder(false));
+let skipKind = null;
+function openSkip(kind) { skipKind = kind; $("skipForm").hidden = false; $("skipTitle").textContent = (kind === "twijfel_niet" ? "Twijfel, niet genomen" : "Gezien, niet genomen") + " · " + (S.dir > 0 ? "kopen" : "verkopen") + " · " + beLabel(S.t[S.cursor] + 1); $("skipWhy").focus(); }
+$("skipBtn").addEventListener("click", () => openSkip("overgeslagen")); $("doubtSkipBtn").addEventListener("click", () => openSkip("twijfel_niet"));
+$("skipCancel").addEventListener("click", () => { $("skipForm").hidden = true; });
+$("skipSave").addEventListener("click", () => { if (placeOrder(true, skipKind)) { $("skipForm").hidden = true; $("skipWhy").value = ""; render(false); } });
+$("fwd").addEventListener("click", stepFwd);
+$("back").addEventListener("click", stepBack);
+$("play").addEventListener("click", () => (S.playing ? pause() : play()));
+$("speed").addEventListener("change", () => { if (S.playing) play(); });
+$("toNow").addEventListener("click", () => goTo(S.maxCursor));
+$("sessions").addEventListener("change", () => {});
+$("epBtn").addEventListener("click", () => { renderEpList(); $("epModal").hidden = false; });
+$("epClose").addEventListener("click", () => { if (S.ep) $("epModal").hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea, select")) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); $("fwd").click(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); stepBack(); }
+  else if (e.key === " ") { e.preventDefault(); S.playing ? pause() : play(); }
+  else if (e.key === "Escape") { setTool("none"); S.pick = null; document.querySelectorAll(".pick").forEach((x) => x.setAttribute("aria-pressed", "false")); setOverlayActive(); }
+});
+function toast(txt) { const d = document.createElement("div"); d.textContent = txt; $("toast").appendChild(d); setTimeout(() => d.remove(), 3500); }
+window.addEventListener("beforeunload", () => saveProgress(true));
+
+renderEpList(); renderStats(); setDir(1);
+initDb().then(() => { let last = null; try { last = localStorage.getItem("katsuReplayEp"); } catch (e) {} if (last && EPISODES.some((e) => e.id === last)) openEpisode(last); });
+})();
+</script>

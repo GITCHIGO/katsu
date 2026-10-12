@@ -41,3 +41,8 @@ maar die geschiedenis is niet meer beschikbaar.
 2. Twijfel: twijfel-genomen vs zeker-genomen; twijfel-niet-genomen (hypothetisch) vs genomen.
 3. Pas als (1) duidelijk positief is: kenmerken zoeken die zijn trades onderscheiden (sessie, breuk, FVG-grootte,
    trend, afstand tot niveaus), daarvan regels maken en die toetsen op de **even maanden** 2020–2024.
+
+## Publicatie
+Pagina: `replay/page.html` (+ `replay/sim.js`), gebouwd met `scripts/replay_build.py`; gepubliceerd als artifact
+"KATSU Replay" met db-opslag. Episodes als base64-tekst (`episodes/<id>.txt`). Sleutel episode → datum staat buiten
+de repo (`katsu_research/replay/sleutel.csv`).

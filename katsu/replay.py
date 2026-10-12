@@ -1,5 +1,5 @@
 """
-Episodes voor de KATSU Replay (docs/replay_spec.md): stukken M1-data, compact gecodeerd als gzip-JSON.
+Episodes voor de KATSU Replay (docs/replay_spec.md): stukken M1-data, compact gecodeerd als gzip-JSON (gepubliceerd als base64-tekst, omdat artifacts geen binaire bestanden serveren).
 
 Codering per candle i (prijzen als gehele getallen in 'points'):
   o[i] = open − close(i−1)   (voor i = 0: open − base)
