@@ -151,7 +151,7 @@ textarea { resize: vertical; min-height: 34px; }
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
     <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
-    <span class="dbstate" title="Versie van de pagina">v5</span>
+    <span class="dbstate" title="Versie van de pagina">v6</span>
   </header>
 
   <div class="main">
@@ -584,7 +584,7 @@ function updateRR() {
   if (!isFinite(e) || !isFinite(sl) || !isFinite(tp)) { $("rrInfo").textContent = "Vul SL en TP in."; return; }
   const risk = Math.abs(e - sl), rew = Math.abs(tp - e);
   const cost = (S.spec.minSpread + 2 * S.spec.slip + S.spec.comm) / risk;
-  $("rrInfo").innerHTML = `risico <b>${(risk / pip).toFixed(1)}</b> pips · doel <b>${(rew / pip).toFixed(1)}</b> pips · RR <b>${(rew / risk).toFixed(2)}</b><br>kosten ≈ <b>${cost.toFixed(2)}R</b> per trade`;
+  $("rrInfo").innerHTML = `risico <b>${(risk / pip).toFixed(1)}</b> pips · doel <b>${(rew / pip).toFixed(1)}</b> pips · RR <b>${(rew / risk).toFixed(2)}</b><br>kosten ≈ <b${cost > 0.2 ? ' class="neg"' : ""}>${cost.toFixed(2)}R</b> per trade${cost > 0.2 ? ' · <span class="neg">SL erg krap: kosten wegen zwaar</span>' : ""}`;
 }
 function onTicketChange() { $("fE").disabled = $("otype").value === "market"; updateRR(); updatePriceLines(); $("tMsg").textContent = ""; }
 function setDir(d) { S.dir = d; $("dBuy").setAttribute("aria-pressed", String(d > 0)); $("dSell").setAttribute("aria-pressed", String(d < 0)); onTicketChange(); }
