@@ -160,11 +160,12 @@ table.grp tr.dim td { color: var(--muted); }
       <label class="check" title="Stoppen (ook midden in een candle) zodra de prijs een van je lijnen of zones raakt"><input type="checkbox" id="zoneStop" checked> stop bij mijn zones</label>
     </div>
     <span class="clock" id="clock">—</span>
+    <button class="ep-btn" id="toPriceBtn" title="Naar de huidige prijs (P)">⌖ Naar prijs</button>
     <span class="spacer"></span>
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
     <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
-    <span class="dbstate" title="Versie van de pagina">v9</span>
+    <span class="dbstate" title="Versie van de pagina">v10</span>
   </header>
 
   <div class="main">
@@ -374,6 +375,11 @@ const series = chart.addCandlestickSeries({ upColor: css("--up"), downColor: css
   wickUpColor: css("--up"), wickDownColor: css("--down") });
 let priceLines = [];
 
+function toPrice() {
+  // Naar de huidige prijs: prijs-as weer automatisch schalen en naar de laatste candle scrollen.
+  chart.priceScale("right").applyOptions({ autoScale: true });
+  chart.timeScale().scrollToRealTime();
+}
 function render(force) {
   if (!S.n) return;
   const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor);
@@ -802,7 +808,7 @@ async function openEpisode(id) {
     let lot = null; try { lot = localStorage.getItem("katsuLot_" + d.sym); } catch (e) {}
     $("fLot").value = lot || "0.10";
     if (S.maxCursor >= S.n - 1) finalizeEpisode();
-    render(true); chart.timeScale().scrollToRealTime(); renderStats(); onTicketChange();
+    render(true); toPrice(); renderStats(); onTicketChange();
   } catch (e) { toast("Episode laden mislukt: " + e.message); $("epModal").hidden = false; }
   $("loading").hidden = true;
 }
@@ -810,7 +816,7 @@ async function openEpisode(id) {
 // ---------------- UI ----------------
 function tfName(m) { return TFS.find((x) => x[1] === m)[0]; }
 TFS.forEach(([nm, m]) => { const b = document.createElement("button"); b.textContent = nm; b.setAttribute("aria-pressed", String(m === S.tf));
-  b.addEventListener("click", () => { S.tf = m; document.querySelectorAll("#tfSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); render(true); chart.timeScale().scrollToRealTime(); });
+  b.addEventListener("click", () => { S.tf = m; document.querySelectorAll("#tfSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); render(true); toPrice(); });
   $("tfSeg").appendChild(b); });
 COLORS.forEach((col, i) => { const b = document.createElement("button"); b.className = "swatch"; b.style.background = col; b.title = "Kleur"; b.setAttribute("aria-label", "Kleur " + (i + 1));
   b.setAttribute("aria-pressed", String(i === 0)); b.addEventListener("click", () => { S.color = col; document.querySelectorAll(".swatch").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); });
@@ -839,7 +845,8 @@ $("fwd").addEventListener("click", stepFwd);
 $("back").addEventListener("click", stepBack);
 $("play").addEventListener("click", () => (S.playing ? pause() : play()));
 $("speed").addEventListener("change", () => { if (S.playing) play(); });
-$("toNow").addEventListener("click", () => goTo(S.maxCursor));
+$("toNow").addEventListener("click", () => { goTo(S.maxCursor); toPrice(); });
+$("toPriceBtn").addEventListener("click", toPrice);
 $("nextEp").addEventListener("click", () => { renderEpList(); $("epModal").hidden = false; });
 $("sessions").addEventListener("change", () => {});
 $("epBtn").addEventListener("click", () => { renderEpList(); $("epModal").hidden = false; });
@@ -848,6 +855,7 @@ document.addEventListener("keydown", (e) => {
   if (e.target.closest("input, textarea, select")) return;
   if (e.key === "ArrowRight") { e.preventDefault(); $("fwd").click(); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); stepBack(); }
+  else if (e.key === "p" || e.key === "P") { toPrice(); }
   else if (e.key === " ") { e.preventDefault(); S.playing ? pause() : play(); }
   else if (e.key === "Escape") { setTool("none"); S.pick = null; document.querySelectorAll(".pick").forEach((x) => x.setAttribute("aria-pressed", "false")); setOverlayActive(); }
 });
