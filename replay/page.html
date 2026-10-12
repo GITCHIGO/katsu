@@ -164,7 +164,7 @@ table.grp tr.dim td { color: var(--muted); }
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
     <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
-    <span class="dbstate" title="Versie van de pagina">v8</span>
+    <span class="dbstate" title="Versie van de pagina">v9</span>
   </header>
 
   <div class="main">
@@ -185,6 +185,7 @@ table.grp tr.dim td { color: var(--muted); }
     <div class="chartwrap">
       <div id="chart"></div>
       <canvas id="overlay"></canvas>
+      <div class="banner" id="endBanner" hidden>Einde van deze episode (2 handelsweken). <button id="nextEp">Volgende episode kiezen</button></div>
       <div class="banner" id="pastBanner" hidden>Je kijkt terug — orders kan je pas weer plaatsen op het verste punt. <button id="toNow">Naar nu</button></div>
       <div class="loading" id="loading" hidden>Episode laden…</div>
     </div>
@@ -387,6 +388,7 @@ function render(force) {
   $("clock").textContent = beLabel(S.t[S.cursor] + 1);
   const past = S.cursor < S.maxCursor;
   $("clock").classList.toggle("past", past); $("pastBanner").hidden = !past;
+  $("endBanner").hidden = past || S.cursor < S.n - 1;
   $("place").disabled = !S.ep; $("place").textContent = past ? "Je kijkt terug: klik om naar nu te gaan" : "Plaats order"; $("skipBtn").disabled = !S.ep; $("doubtSkipBtn").disabled = !S.ep;
   $("fwd").disabled = S.cursor >= S.n - 1; $("back").disabled = S.cursor <= 0;
   updatePriceLines(); renderOrders(); updateRR();
@@ -553,12 +555,27 @@ function zoneTouched(i) {
     return inBand(i, lo, hi) && !inBand(i - 1, lo, hi);
   });
 }
+function finalizeEpisode() {
+  // Einde van de episode: niet-gevulde orders vervallen, open posities sluiten op de laatste prijs.
+  const i = S.n - 1, sp = KatsuSim.spread({ t: S.t[i], s: S.s[i] }, S.spec);
+  S.orders.filter((o) => o.ep === S.ep && (o.status === "pending" || o.status === "open")).forEach((o) => {
+    if (o.status === "pending") { o.status = "niet_gevuld"; o.exitT = S.t[i]; }
+    else {
+      const px = o.dir > 0 ? S.c[i] - S.spec.slip : S.c[i] + sp + S.spec.slip;
+      const risk = Math.abs(o.fill - o.slAtFill);
+      Object.assign(o, { status: "closed", exitPx: px, exitT: S.t[i], reason: "EINDE", rGross: o.dir * (px - o.fill) / risk });
+      o.rNet = o.rGross - S.spec.comm / risk;
+    }
+    persistOrder(o);
+  });
+}
 function goTo(target) {
   target = Math.max(0, Math.min(S.n - 1, target));
   if (target > S.maxCursor) {
     const stopAt = processUpTo(target);
     S.cursor = stopAt == null ? target : stopAt;
     if (stopAt != null) pause();
+    if (S.maxCursor >= S.n - 1) { pause(); finalizeEpisode(); }
   } else S.cursor = target;
   render(false); saveProgress();
 }
@@ -760,7 +777,7 @@ function renderEpList() {
     const done = pr ? Math.max(0, Math.min(1, (pr.maxCursor - pr.start) / Math.max(1, pr.n - 1 - pr.start))) : 0;
     const nTr = [...S.allTrades.values()].filter((o) => o.ep === e.id).length;
     const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = (e.sym === "EURUSD" ? "EURUSD " : "XAUUSD ") + "#" + e.id.slice(3);
-    const meta = document.createElement("span"); meta.className = "meta"; meta.textContent = `${Math.round(done * 100)}% gespeeld · ${nTr} trades`;
+    const meta = document.createElement("span"); meta.className = "meta"; meta.textContent = (done >= 0.999 ? "klaar" : `${Math.round(done * 100)}% gespeeld`) + ` · ${nTr} trades`;
     const bar = document.createElement("div"); bar.className = "bar"; const i = document.createElement("i"); i.style.width = (done * 100) + "%"; bar.appendChild(i);
     b.append(nm, meta, bar); b.addEventListener("click", () => openEpisode(e.id)); box.appendChild(b);
   });
@@ -784,6 +801,7 @@ async function openEpisode(id) {
     try { localStorage.setItem("katsuReplayEp", id); } catch (e) {}
     let lot = null; try { lot = localStorage.getItem("katsuLot_" + d.sym); } catch (e) {}
     $("fLot").value = lot || "0.10";
+    if (S.maxCursor >= S.n - 1) finalizeEpisode();
     render(true); chart.timeScale().scrollToRealTime(); renderStats(); onTicketChange();
   } catch (e) { toast("Episode laden mislukt: " + e.message); $("epModal").hidden = false; }
   $("loading").hidden = true;
@@ -822,6 +840,7 @@ $("back").addEventListener("click", stepBack);
 $("play").addEventListener("click", () => (S.playing ? pause() : play()));
 $("speed").addEventListener("change", () => { if (S.playing) play(); });
 $("toNow").addEventListener("click", () => goTo(S.maxCursor));
+$("nextEp").addEventListener("click", () => { renderEpList(); $("epModal").hidden = false; });
 $("sessions").addEventListener("change", () => {});
 $("epBtn").addEventListener("click", () => { renderEpList(); $("epModal").hidden = false; });
 $("epClose").addEventListener("click", () => { if (S.ep) $("epModal").hidden = true; });
