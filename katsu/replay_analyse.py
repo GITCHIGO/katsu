@@ -35,3 +35,30 @@ def excursion(m1: pd.DataFrame, sym: str, d: int, fill: float, tp: float, fill_i
 
 def net_pips(sym: str, d: int, fill: float, exit_px: float) -> float:
     return (d * (exit_px - fill) - COMM[sym]) / PIP[sym]
+
+
+def sl_check(m1: pd.DataFrame, sym: str, d: int, fill: float, sl: float, tp: float, fill_idx: int) -> dict:
+    """
+    Was een iets ruimere SL beter geweest? Volgt de koers vanaf de vulling tot het einde van de episode en zoekt
+    het moment waarop de TP geraakt wordt. Nodige SL = grootste beweging tegen je in vóór dat moment (de candle
+    van de TP telt mee: bij twijfel eerst de SL). extra_sl_pips = hoeveel pips ruimer de SL had moeten zijn
+    (0 = de oorspronkelijke SL hield stand; None = de TP werd in de episode nooit geraakt).
+    sl_marge_pips = hoeveel pips er tot de oorspronkelijke SL overbleven op het slechtste moment vóór de TP (of tot
+    het einde als de TP nooit kwam): klein = het scheelde weinig.
+    """
+    seg = m1.iloc[fill_idx:]
+    sp = np.maximum(seg["spread"].to_numpy(float) * POINT[sym], MIN_SPREAD[sym])
+    if d > 0:
+        adv = seg["low"].to_numpy(float); fav = seg["high"].to_numpy(float)
+    else:
+        adv = seg["high"].to_numpy(float) + sp; fav = seg["low"].to_numpy(float) + sp
+    pip = PIP[sym]
+    worst = np.maximum.accumulate(-d * (adv - fill) / pip)          # grootste beweging tegen je in tot en met candle i
+    hit = np.nonzero(d * (fav - tp) >= 0)[0]
+    sl_dist = d * (fill - sl) / pip
+    if len(hit) == 0:
+        return {"sl_afstand_pips": sl_dist, "extra_sl_pips": None, "tp_na_minuten": None,
+                "sl_marge_pips": sl_dist - worst[-1]}
+    need = worst[hit[0]]
+    return {"sl_afstand_pips": sl_dist, "extra_sl_pips": max(0.0, need - sl_dist), "tp_na_minuten": int(hit[0]),
+            "sl_marge_pips": sl_dist - need}

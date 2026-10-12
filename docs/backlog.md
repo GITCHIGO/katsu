@@ -32,3 +32,6 @@ Laatst bijgewerkt: 12 oktober 2026. Niets hiervan wordt gebouwd zonder eigen spe
   sweep vooraf, sessie, HTF-trend. Vangrails verplicht: teller van alle geteste combinaties, poort strenger naarmate er
   meer combinaties zijn, winnaars pas geldig na de bevestigingshelft en daarna demo. 2025–2026 is voor de FVG-familie
   al gebruikt (eindtest 12 okt 2026, niet geslaagd).
+- **TP- en SL-plaatsing uit de replay** (wens Gitchi, 12 okt 2026, "hier komen we later op terug"): wordt bij elke
+  analyse gemeten (MFE/MAE, afstand tot TP, nodige extra SL). Later beslissen of een TP net vóór de oude high of een
+  ruimere SL beter is, op genoeg trades en als aparte test.

@@ -43,6 +43,11 @@ Voor een later model blijft werkregel 6 (vast risico in R) gelden; dat is een ap
 1. Na ≥ 100 echte trades: netto pips (en R) per trade, t (geclusterd per week), winrate, per markt; vergeleken met
    (a) alle Gitchi-FVG-signalen in dezelfde weken en (b) willekeurige trades met dezelfde SL/TP-afstanden en tijdstippen.
 2. Twijfel: twijfel-genomen vs zeker-genomen; twijfel-niet-genomen (hypothetisch) vs genomen.
+2b. TP en SL (wens Gitchi, 12 okt 2026; vast onderdeel van elke analyse): per trade MFE/MAE, hoeveel pips er
+   tot de TP ontbraken, of een ruimere SL de trade had gered (nodige extra pips tot de TP alsnog kwam) en hoe krap
+   winnaars hun SL ontsnapten. Code: `katsu/replay_analyse.py`, `scripts/replay_analyse.py`. Pas bij voldoende trades
+   conclusies trekken (een TP iets vóór een oude high, een ruimere SL); elke aanpassing is een nieuwe, vooraf
+   vastgelegde test.
 3. Pas als (1) duidelijk positief is: kenmerken zoeken die zijn trades onderscheiden (sessie, breuk, FVG-grootte,
    trend, afstand tot niveaus), daarvan regels maken en die toetsen op de **even maanden** 2020–2024.
 
