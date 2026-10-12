@@ -36,7 +36,11 @@ maar die geschiedenis is niet meer beschikbaar.
 - `tekeningen/<episode>` en `voortgang/<episode>`.
 
 ## Analyse (vooraf vastgelegd)
-1. Na ≥ 100 echte trades: netto R per trade, t (geclusterd per week), winrate, per markt; vergeleken met
+Gitchi traedt met een **vaste lotgrootte** (EURUSD 0,1 lot), niet met 1% risico per trade (12 okt 2026). De replay
+toont daarom pips en dollars bij de ingevulde lot (1 pip = $10 per lot op EURUSD en goud); R blijft opgeslagen.
+De hoofdmaat voor de analyse is **netto pips per trade** (en $ bij zijn lot); R wordt ter info ook getoond.
+Voor een later model blijft werkregel 6 (vast risico in R) gelden; dat is een aparte keuze.
+1. Na ≥ 100 echte trades: netto pips (en R) per trade, t (geclusterd per week), winrate, per markt; vergeleken met
    (a) alle Gitchi-FVG-signalen in dezelfde weken en (b) willekeurige trades met dezelfde SL/TP-afstanden en tijdstippen.
 2. Twijfel: twijfel-genomen vs zeker-genomen; twijfel-niet-genomen (hypothetisch) vs genomen.
 3. Pas als (1) duidelijk positief is: kenmerken zoeken die zijn trades onderscheiden (sessie, breuk, FVG-grootte,
