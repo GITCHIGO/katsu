@@ -12,16 +12,16 @@ Uitvoering op M15-candles (M1 bestaat pas vanaf 2020), met alle kosten. Elke set
 ## 2. Soorten setups (LONG; SHORT gespiegeld)
 | Soort | Definitie | Signaal |
 |---|---|---|
-| **FVG na breuk** | de middelste candle sluit voorbij de laatste bevestigde, intacte swing high (L = 3) — spec v0.4, zonder minimumgrootte | einde candle 3 |
-| **Alle FVG's** | elke bullish FVG: low(candle 3) > high(candle 1) | einde candle 3 |
+| **FVG** | elke bullish FVG: low(candle 3) > high(candle 1). **"FVG na breuk"** = filter *breuk* ≠ geen: de middelste candle sluit voorbij de laatste bevestigde, intacte swing high (L = 3), zoals spec v0.4 | einde candle 3 |
 | **IFVG** | een bearish FVG waar binnen 48 candles een candle **boven** sluit (boven de bovenrand van het gat): het gat wordt steun → long | einde van die candle |
-Sweep+CHoCH, BOS, enz. zijn **filters** op deze setups (zie §3), geen aparte soorten.
+Sweep+CHoCH, BOS, enz. zijn **filters** op deze setups (zie §4), geen aparte soorten.
 
 ## 3. Uitstap (jouw regels, voor alle soorten gelijk)
 - Entry: limiet op **38,2% diep** in het gat (vanaf de rand die de koers eerst raakt). Geldig tot ongeldig:
   vangnet 5 handelsdagen; geannuleerd als de TP eerst geraakt wordt.
-- SL-basis: FVG na breuk = laagste low van het order block t/m candle 2 (spec v0.4). Alle FVG's = laagste low van de
-  laatste tegengestelde candle binnen 10 candles vóór candle 1 t/m candle 2 (geen: candle 1–2). IFVG = laagste low
+- SL-basis: FVG met breuk = laagste low van het order block (laatste tegengestelde candle tussen de oorsprong van het
+  been en candle 1) t/m candle 2 (spec v0.4). FVG zonder breuk = laagste low van de laatste tegengestelde candle
+  binnen 10 candles vóór candle 1 t/m candle 2 (geen: candle 1–2). IFVG = laagste low
   tussen candle 1 van de oorspronkelijke FVG en de omkeer-candle. Buffer spread + 0,1 ATR. **Geen** minimum-SL en
   **geen** kostenplafond: de SL-grootte en de kosten zijn filters.
 - TP: laagste ongeraakte swing high (L = 3) boven de top van de beweging, maximaal 2R; geen: 2R.
