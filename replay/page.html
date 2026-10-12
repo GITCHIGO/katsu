@@ -140,14 +140,18 @@ textarea { resize: vertical; min-height: 34px; }
       <select id="speed" aria-label="Snelheid" title="Candles per seconde">
         <option value="1">1×</option><option value="2" selected>2×</option><option value="5">5×</option><option value="10">10×</option><option value="25">25×</option>
       </select>
-      <label class="check" title="Afspelen stopt bij een vulling of exit"><input type="checkbox" id="autoPause" checked> stop bij order</label>
+      <select id="stepSize" aria-label="Stapgrootte" title="Hoe ver één stap gaat">
+        <option value="candle" selected>stap: 1 candle</option><option value="1">stap: 1 min</option><option value="3">stap: 3 min</option><option value="5">stap: 5 min</option>
+      </select>
+      <label class="check" title="Stoppen (ook midden in een candle) zodra een order gevuld of gesloten wordt"><input type="checkbox" id="autoPause" checked> stop bij order</label>
+      <label class="check" title="Stoppen (ook midden in een candle) zodra de prijs een van je lijnen of zones raakt"><input type="checkbox" id="zoneStop" checked> stop bij mijn zones</label>
     </div>
     <span class="clock" id="clock">—</span>
     <span class="spacer"></span>
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
     <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
-    <span class="dbstate" title="Versie van de pagina">v4</span>
+    <span class="dbstate" title="Versie van de pagina">v5</span>
   </header>
 
   <div class="main">
@@ -512,9 +516,24 @@ function processUpTo(target) {
         : o.status === "cancelled" ? "order geannuleerd" : "order gevuld"));
     }
     S.maxCursor = i;
-    if (realEvent && S.playing && $("autoPause").checked && i < target) return i;
+    if (i < target && ((realEvent && $("autoPause").checked) || ($("zoneStop").checked && zoneTouched(i)))) return i;
   }
   return null;
+}
+function inBand(i, lo, hi) { return S.h[i] >= lo && S.l[i] <= hi; }
+function zoneTouched(i) {
+  // De prijs komt in een lijn of zone die je getekend hebt (de vorige minuut zat hij er nog niet in).
+  if (i < 1) return false;
+  return S.drawings.some((d) => {
+    let lo, hi;
+    if (d.type === "hline") { lo = hi = d.p1; }
+    else if (d.type === "rect") {
+      const t1 = Math.min(d.t1, d.t2), t2 = Math.max(d.t1, d.t2);
+      if (S.t[i] < t1 || (!d.extend && S.t[i] > t2)) return false;
+      lo = Math.min(d.p1, d.p2); hi = Math.max(d.p1, d.p2);
+    } else return false;
+    return inBand(i, lo, hi) && !inBand(i - 1, lo, hi);
+  });
 }
 function goTo(target) {
   target = Math.max(0, Math.min(S.n - 1, target));
@@ -525,8 +544,14 @@ function goTo(target) {
   } else S.cursor = target;
   render(false); saveProgress();
 }
-function stepFwd() { const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor); if (S.cursor < gr[g].e) goTo(gr[g].e); else if (g + 1 < gr.length) goTo(gr[g + 1].e); else pause(); }
-function stepBack() { const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor); if (g > 0) goTo(gr[g - 1].e); }
+function minuteStep(dirn) {
+  const k = Number($("stepSize").value); let j = S.cursor;
+  if (dirn > 0) { j = S.cursor + 1; while (j < S.n - 1 && S.t[j] < S.t[S.cursor] + k) j++; }
+  else { j = S.cursor - 1; while (j > 0 && S.t[j] > S.t[S.cursor] - k) j--; }
+  goTo(j);
+}
+function stepFwd() { if ($("stepSize").value !== "candle") return minuteStep(1); const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor); if (S.cursor < gr[g].e) goTo(gr[g].e); else if (g + 1 < gr.length) goTo(gr[g + 1].e); else pause(); }
+function stepBack() { if ($("stepSize").value !== "candle") return minuteStep(-1); const gr = groupsFor(S.tf); const g = groupAt(gr, S.cursor); if (g > 0) goTo(gr[g - 1].e); }
 function play() { if (!S.n) return; S.playing = true; $("play").textContent = "❚❚"; $("play").setAttribute("aria-label", "Pauzeren");
   const tick = () => { if (!S.playing) return; if (S.cursor < S.maxCursor) { goTo(S.maxCursor); } stepFwd(); if (S.cursor >= S.n - 1) pause(); };
   clearInterval(S.timer); S.timer = setInterval(tick, 1000 / Number($("speed").value)); }
