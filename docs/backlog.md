@@ -1,6 +1,6 @@
 # KATSU — backlog: ideeën die later apart getest worden
 
-Laatst bijgewerkt: 9 oktober 2026. Niets hiervan wordt gebouwd zonder eigen spec. Elk idee wordt **apart** getest, met dezelfde uitvoerings- en testregels (placebo, zonder kosten, keuzeregel, 2025–2026 dicht).
+Laatst bijgewerkt: 12 oktober 2026. Niets hiervan wordt gebouwd zonder eigen spec. Elk idee wordt **apart** getest, met dezelfde uitvoerings- en testregels (placebo, zonder kosten, keuzeregel, 2025–2026 dicht).
 
 ## Soorten FVG (wens Gitchi, 9 okt 2026)
 | Soort | Wat het is | Testbaar? |
@@ -28,3 +28,7 @@ Laatst bijgewerkt: 9 oktober 2026. Niets hiervan wordt gebouwd zonder eigen spec
 - **Dips kopen op aandelenindexen** (wens Gitchi, 11 okt 2026, voor later): US500 gaf in ronde 2 het enige lichtpuntje (78% winrate, +0,10R netto, maar 54 trades). Later testen met D1/H1 van US30, NAS100, GER40, UK100.
 - **ICT-boek, nog niet getest:** CBDR-projecties, NWOG/NDOG, OTE 62–79%, D1-swingbias met raid van candle 3, NY 07–09u retracement, breaker/mitigation/rejection blocks, IPDA 20/40/60 dagen, seizoenen (zie `ict_boek_samenvatting.md`).
 - **Regels voor elke volgende spec:** maximale looptijd per trade; swap evenredig met prijs en periode in plaats van een vast bedrag.
+- **Dashboard om bouwstenen te combineren als filters** (wens Gitchi, 12 okt 2026): bv. FVG na BOS vs na CHoCH, soort FVG,
+  sweep vooraf, sessie, HTF-trend. Vangrails verplicht: teller van alle geteste combinaties, poort strenger naarmate er
+  meer combinaties zijn, winnaars pas geldig na de bevestigingshelft en daarna demo. 2025–2026 is voor de FVG-familie
+  al gebruikt (eindtest 12 okt 2026, niet geslaagd).
