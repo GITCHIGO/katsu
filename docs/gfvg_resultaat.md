@@ -38,3 +38,20 @@ De regels zijn een benadering van Gitchi's beoordeling. Wat zijn "gevoel" extra 
 welke FVG "sterk" is) zit er niet in. Dat kan alleen eerlijk gemeten worden door zijn eigen beslissingen vooraf
 vast te leggen (bv. een demo-logboek met screenshots vóór de uitkomst), niet door de regels verder bij te schaven
 op deze data.
+
+## Aanvulling: welke instapdiepte is het voordeligst? (vraag Gitchi, 12 okt 2026)
+Elke setup apart gesimuleerd met entry op 0%, 10%, …, 100% diep in het gat (zonder trendvoorwaarde, geldig tot
+ongeldig). Script `scripts/gfvg_entrydiepte.py`, register `research/register_gfvg_entrydiepte.csv` (33 extra pogingen).
+| Diepte | EURUSD zonder kosten | GBPUSD zonder kosten | Goud zonder kosten | Vulgraad (gem.) | Winrate EURUSD |
+|---|---|---|---|---|---|
+| 0% (rand) | −0,050 | −0,025 | −0,031 | 69% | 44% |
+| 20% | −0,053 | −0,018 | −0,045 | 63% | 41% |
+| 40% | −0,035 | −0,025 | −0,029 | 56% | 39% |
+| 50% | −0,014 | −0,038 | −0,053 | 52% | 39% |
+| 60% | −0,005 | −0,055 | −0,078 | 47% | 38% |
+| 80% | −0,025 | −0,052 | −0,058 | 36% | 38% |
+| 100% (verre rand) | −0,032 | −0,043 | −0,085 | 25% | 37% |
+Met kosten: op elke diepte en elke markt negatief (EURUSD −0,08 tot −0,14R, GBPUSD −0,13 tot −0,20R, goud −0,07 tot −0,23R).
+**Geen enkele diepte is winstgevend, ook niet zonder kosten.** Dieper instappen verbetert de RR, maar de winrate
+zakt in dezelfde mate (de diepe retests zijn vaker de trades die doorlopen tot de SL). De "beste" diepte verschilt
+per markt (EURUSD 60%, GBPUSD 20%, goud 0–40%) en ligt binnen het toeval rond nul.
