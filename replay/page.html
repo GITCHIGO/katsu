@@ -147,7 +147,7 @@ textarea { resize: vertical; min-height: 34px; }
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
     <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
-    <span class="dbstate" title="Versie van de pagina">v3</span>
+    <span class="dbstate" title="Versie van de pagina">v4</span>
   </header>
 
   <div class="main">
@@ -365,7 +365,7 @@ function render(force) {
   $("clock").textContent = beLabel(S.t[S.cursor] + 1);
   const past = S.cursor < S.maxCursor;
   $("clock").classList.toggle("past", past); $("pastBanner").hidden = !past;
-  $("place").disabled = past || !S.ep; $("skipBtn").disabled = !S.ep; $("doubtSkipBtn").disabled = !S.ep;
+  $("place").disabled = !S.ep; $("place").textContent = past ? "Je kijkt terug: klik om naar nu te gaan" : "Plaats order"; $("skipBtn").disabled = !S.ep; $("doubtSkipBtn").disabled = !S.ep;
   $("fwd").disabled = S.cursor >= S.n - 1; $("back").disabled = S.cursor <= 0;
   updatePriceLines(); renderOrders(); updateRR();
 }
@@ -719,7 +719,10 @@ document.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", ()
 ["fE", "fS", "fT"].forEach((id) => $(id).addEventListener("input", onTicketChange));
 $("otype").addEventListener("change", onTicketChange);
 $("dBuy").addEventListener("click", () => setDir(1)); $("dSell").addEventListener("click", () => setDir(-1));
-$("place").addEventListener("click", () => placeOrder(false));
+$("place").addEventListener("click", () => {
+  if (S.cursor < S.maxCursor) { goTo(S.maxCursor); $("tMsg").textContent = "Je staat weer op het verste punt. Controleer je order en klik opnieuw."; return; }
+  placeOrder(false);
+});
 let skipKind = null;
 function openSkip(kind) { skipKind = kind; $("skipForm").hidden = false; $("skipTitle").textContent = (kind === "twijfel_niet" ? "Twijfel, niet genomen" : "Gezien, niet genomen") + " · " + (S.dir > 0 ? "kopen" : "verkopen") + " · " + beLabel(S.t[S.cursor] + 1); $("skipWhy").focus(); }
 $("skipBtn").addEventListener("click", () => openSkip("overgeslagen")); $("doubtSkipBtn").addEventListener("click", () => openSkip("twijfel_niet"));
