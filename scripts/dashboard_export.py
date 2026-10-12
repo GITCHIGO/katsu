@@ -1,7 +1,8 @@
 """
 Zet de dashboard-data om naar compacte bestanden voor de pagina (één per markt, base64 van gzip-JSON).
 Kolomgewijs: elke categorie als codes + woordenlijst, getallen als gehele getallen (R × 1000, pips × 10).
-Gebruik: python -m scripts.dashboard_export <dashboard_events_<periode>.pkl> <uitmap>
+Gebruik: python -m scripts.dashboard_export <uitmap> <dashboard_events_*.pkl> [...]
+(meerdere periodes worden samengevoegd; de pagina kiest zelf van–tot)
 """
 import base64
 import gzip
@@ -73,14 +74,16 @@ def _minutes(s):
 
 
 def period_meta(df):
-    """Periodegegevens voor de pagina: label en de jaren (om 'positief in elk jaar' te tonen)."""
+    """Periodegegevens voor de pagina: label, jaren en de maanden waarin setups zitten (JJJJ-MM)."""
     years = sorted(int(y) for y in df["jaar"].unique())
-    return {"label": f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0]), "jaren": years}
+    months = sorted(pd.to_datetime(df["t_sig"]).dt.strftime("%Y-%m").unique().tolist())
+    return {"label": f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0]), "jaren": years,
+            "maanden": months, "einde": str(pd.to_datetime(df["t_sig"]).max().date())}
 
 
-def main(pkl, outdir):
+def main(outdir, *pkls):
     os.makedirs(outdir, exist_ok=True)
-    df = prepare(pd.read_pickle(pkl))
+    df = prepare(pd.concat([pd.read_pickle(p) for p in pkls], ignore_index=True))
     meta = period_meta(df)
     for m in ORDER["markt"]:
         body = encode(df[df.markt == m].sort_values("t_sig", kind="stable"))
@@ -92,4 +95,4 @@ def main(pkl, outdir):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    main(sys.argv[1], *sys.argv[2:])

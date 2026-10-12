@@ -1,5 +1,6 @@
 # KATSU — spec: dashboard met bouwstenen (12 okt 2026)
 
+> **v3 (zelfde dag):** Gitchi kiest zelf de periode, ook vóór 2025 (zie §9). Even maanden 2020–2024 blijven eruit.
 > **Besluit Gitchi, 12 okt 2026 (v2):** het dashboard toont **alleen 2025 – 9 okt 2026** (zonder zijn 6 screenshotdagen),
 > niets ervoor. Daarmee is 2025–2026 vanaf nu **verkenningsdata** (werkregel 7 aangepast). Bewijs voor een bevroren
 > combinatie komt van de **even maanden 2020–2024** (nooit bekeken) en daarna van een demo. §1 en de split
@@ -84,7 +85,21 @@ curve (cumulatieve R), per jaar, vóór 2020 vs 2020–24, en een uitsplitsing "
   dezelfde cijfers (alles, $ één tegelijk: 5 000 trades, −1,99 $ per trade, totaal −9 943 $, t −3,81).
 - Data: `python -m scripts.dashboard_build <htf> <uit> 2025` → `dashboard_events_2025.pkl`.
 
-## 9. Publicatie en controle v1 (12 okt 2026)
+## 9. v3: zelf de periode kiezen (12 okt 2026, wens Gitchi)
+- Data = verkenningshelft (FX 2010–2019, goud 2016–2019, oneven maanden 2020–2024) **+** 2025 – 9 okt 2026.
+  De **even maanden 2020–2024 zitten er niet in** (schoon voor de bevestiging van bevroren combinaties).
+- Van–tot per maand (standaard 2025-01 tot laatste maand) en snelkeuzes "2025–26", "vóór 2025", "alles".
+  Een setup hoort bij de maand van zijn signaal (1 minuut terug: een signaal om 00:00 hoort bij de maand ervoor).
+- Oordeel: positief in **beide helften** van de gekozen periode (elk ≥ 20 trades) en
+  **"buiten je periode"**: dezelfde filters op alle andere beschikbare data. Is die met ≥ 100 trades niet positief,
+  dan krijgt de combinatie "alleen hier" i.p.v. "kandidaat".
+- Grafiek per maand tot 36 maanden, daarna per jaar. Een andere periode dan de standaard telt als aparte poging.
+- Gecontroleerd tegen Python: combinatie #21 (GBPUSD+goud, IFVG, geen sweep, eerste FVG, M15 tegen, H1 tegen/neutraal),
+  één tegelijk: 2025–26 85 trades +0,156R; buiten = 419 trades −0,233R (t −4,04); alles 504 trades −0,167R;
+  2016–2019 176 trades −0,371R.
+- Export: `python -m scripts.dashboard_export <uit> dashboard_events_verkenning.pkl dashboard_events_2025.pkl`.
+
+## 10. Publicatie en controle v1 (12 okt 2026)
 Pagina `dashboard/page.html`; data met `python -m scripts.dashboard_build` → `dashboard_events.pkl`, daarna
 `python -m scripts.dashboard_export <pkl> <map>/data` (base64 gzip-JSON per markt). Gepubliceerd als artifact
 "KATSU Bouwstenen" met db-opslag: `teller/pogingen` (bekeken combinaties) en `bevroren/<id>` (max. 3).

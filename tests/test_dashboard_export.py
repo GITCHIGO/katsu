@@ -52,3 +52,11 @@ def test_kostenklasse():
         r.update({"vulling": "gevuld", "uitkomst": "TP"})
     out = prepare(pd.DataFrame(rows))
     assert list(out["kosten"]) == ["<0,1R", "0,1–0,2R", ">0,2R", "onbekend"]
+
+
+def test_periode_maanden():
+    from scripts.dashboard_export import period_meta
+    df = pd.DataFrame([_row(jaar=2019, t_sig=pd.Timestamp("2019-12-31 23:00")), _row(jaar=2025, t_sig=pd.Timestamp("2025-01-02 01:00")),
+                       _row(jaar=2025, t_sig=pd.Timestamp("2025-01-20 01:00"))])
+    m = period_meta(df)
+    assert m["maanden"] == ["2019-12", "2025-01"] and m["jaren"] == [2019, 2025] and m["einde"] == "2025-01-20"

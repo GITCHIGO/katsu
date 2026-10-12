@@ -101,6 +101,14 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 4p
       <label>Goud lot <input type="number" id="lotXAUUSD" min="0.01" step="0.01" value="0.02"></label>
       <label title="Benadering: per markt pas een nieuwe trade als de vorige gesloten is (op volgorde van vulling)."><input type="checkbox" id="oneAt" checked> één trade tegelijk per markt</label>
     </div>
+    <div class="settings" id="periodBar">
+      <label>Van <select id="pFrom" aria-label="Van maand"></select></label>
+      <label>tot <select id="pTo" aria-label="Tot maand"></select></label>
+      <span class="seg" role="group" aria-label="Snelkeuze periode">
+        <button data-q="2025">2025–26</button><button data-q="voor">vóór 2025</button><button data-q="alles">alles</button>
+      </span>
+      <span class="note">Even maanden 2020–2024 zitten er bewust niet in: die blijven schoon voor de bevestiging.</span>
+    </div>
     <div class="active" id="active"></div>
     <div id="body"><div class="loading">Data laden…</div></div>
   </main>
@@ -132,7 +140,29 @@ let D = null, ORDER = null, MISSING = -2147483648, PERIOD = { label: "", jaren: 
 const allowed = {};
 let breakdownFeat = "breuk";
 let db = null, seen = new Set(), frozen = [];
-const set = { unit: "usd", lot: { ...DEFAULT_LOT }, oneAt: true };
+const set = { unit: "usd", lot: { ...DEFAULT_LOT }, oneAt: true, from: "2025-01", to: null };
+const ymOf = (s) => +s.slice(0, 4) * 12 + (+s.slice(5, 7) - 1);
+const ymStr = (v) => `${Math.floor(v / 12)}-${String(v % 12 + 1).padStart(2, "0")}`;
+const range = () => [ymOf(set.from), ymOf(set.to)];
+function defaultRange() { return set.from === "2025-01" && set.to === PERIOD.maanden[PERIOD.maanden.length - 1]; }
+function wirePeriod() {
+  const ms = PERIOD.maanden, last = ms[ms.length - 1];
+  if (!ms.includes(set.from)) set.from = "2025-01";
+  if (!set.to || !ms.includes(set.to)) set.to = last;
+  const fill = (sel, val) => { sel.textContent = ""; ms.forEach((m) => { const o = document.createElement("option"); o.value = m; o.textContent = m; if (m === val) o.selected = true; sel.appendChild(o); }); };
+  const paint = () => { fill($("pFrom"), set.from); fill($("pTo"), set.to); };
+  const apply = () => { if (ymOf(set.from) > ymOf(set.to)) [set.from, set.to] = [set.to, set.from]; paint(); saveSettings(); update(); };
+  $("pFrom").addEventListener("change", (e) => { set.from = e.target.value; apply(); });
+  $("pTo").addEventListener("change", (e) => { set.to = e.target.value; apply(); });
+  document.querySelectorAll("#periodBar [data-q]").forEach((b) => b.addEventListener("click", () => {
+    const q = b.dataset.q;
+    if (q === "2025") { set.from = "2025-01"; set.to = last; }
+    if (q === "voor") { set.from = ms[0]; set.to = "2024-12"; }
+    if (q === "alles") { set.from = ms[0]; set.to = last; }
+    apply();
+  }));
+  paint();
+}
 
 // ---------------- instellingen (per kijker, in de browser) ----------------
 function loadSettings() {
@@ -176,6 +206,10 @@ async function loadAll() {
   const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => key(a) - key(b));
   const sorted = {};
   Object.keys(cols).forEach((c) => { const src = cols[c]; const dst = new src.constructor(n); for (let i = 0; i < n; i++) dst[i] = src[idx[i]]; sorted[c] = dst; });
+  // maand van het signaal (1 minuut terug: een signaal om 00:00 hoort bij de candle van de maand ervoor)
+  const ym = new Int32Array(n);
+  for (let i = 0; i < n; i++) { const d = new Date((sorted.ts[i] - 1) * 60000); ym[i] = d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+  sorted.ym = ym;
   D = { n, cols: sorted, scale: parts[0].scale };
   FEATS.forEach((f) => { allowed[f] = new Uint8Array(ORDER[f].length).fill(1); });
 }
@@ -196,9 +230,11 @@ function val(col, i) {
 
 // ---------------- statistiek ----------------
 function activeFeats(except) { return FEATS.filter((f) => f !== except && allowed[f].some((v) => !v)); }
-function select(except) {
-  const act = activeFeats(except), C = D.cols, out = [];
+function select(except, outside) {        // outside = true: dezelfde filters, maar buiten de gekozen periode
+  const act = activeFeats(except), C = D.cols, out = [], [a, b] = range();
   for (let i = 0; i < D.n; i++) {
+    const inR = C.ym[i] >= a && C.ym[i] <= b;
+    if (inR === !!outside) continue;
     let ok = true;
     for (const f of act) if (!allowed[f][C[f][i]]) { ok = false; break; }
     if (ok) out.push(i);
@@ -220,7 +256,8 @@ function stats(rows) {
   const filled = filledOf(rows);
   const n = filled.length;
   let sum = 0, sumF = 0, nF = 0, sumPF = 0, nPF = 0, win = 0, cum = 0, peak = 0, dd = 0;
-  const pips = {}, years = {}, months = {};
+  const pips = {}, years = {}, months = {}, halves = [[0, 0], [0, 0]];
+  const [ra, rb] = range(), mid = (ra + rb + 1) / 2;
   for (const i of filled) {
     const x = val("r_net", i); sum += x; if (x > 0) win++;
     cum += x; peak = Math.max(peak, cum); dd = Math.max(dd, peak - cum);
@@ -228,7 +265,8 @@ function stats(rows) {
     const pf = val("r_placebo_free", i); if (isFinite(pf)) { sumPF += pf; nPF++; }
     const m = MARKETS[C.markt[i]]; if (C.pips[i] !== MISSING) { (pips[m] ||= [0, 0]); pips[m][0] += C.pips[i] / S.pips; pips[m][1]++; }
     const y = C.jaar[i]; (years[y] ||= [0, 0]); years[y][0] += x; years[y][1]++;
-    const mo = new Date(C.fill_time[i] * 60000).toISOString().slice(0, 7); (months[mo] ||= [0, 0]); months[mo][0] += x; months[mo][1]++;
+    const mo = ymStr(C.ym[i]); (months[mo] ||= [0, 0]); months[mo][0] += x; months[mo][1]++;
+    const hh = halves[C.ym[i] < mid ? 0 : 1]; hh[0] += x; hh[1]++;
   }
   const mean = n ? sum / n : NaN;
   const wk = new Map();
@@ -236,7 +274,7 @@ function stats(rows) {
   let ss = 0; wk.forEach((v) => (ss += v * v));
   const se = n > 1 ? Math.sqrt(ss) / n : NaN;
   return { setups: rows.length, n, win: n ? win / n : NaN, mean, total: sum, dd, t: se > 0 ? mean / se : NaN,
-    free: nF ? sumF / nF : NaN, placFree: nPF ? sumPF / nPF : NaN, pips, years, months, filled };
+    free: nF ? sumF / nF : NaN, placFree: nPF ? sumPF / nPF : NaN, pips, years, months, halves, mid, filled };
 }
 const lat = (N) => Math.sqrt(2 * Math.log(Math.max(N, 2)));
 const nf2 = new Intl.NumberFormat("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -281,12 +319,14 @@ function renderFilters() {
   });
 }
 function filterKey() {
-  return activeFeats().map((f) => f + ":" + [...allowed[f]].map((v, i) => (v ? ORDER[f][i] : null)).filter((x) => x !== null).join("|")).join(";");
+  const per = defaultRange() ? [] : [`periode:${set.from}..${set.to}`];
+  return per.concat(activeFeats().map((f) => f + ":" + [...allowed[f]].map((v, i) => (v ? ORDER[f][i] : null)).filter((x) => x !== null).join("|"))).join(";");
 }
 function describe() {
   const act = activeFeats();
-  if (!act.length) return ["geen filter (alle setups)"];
-  return act.map((f) => LABEL[f] + ": " + ORDER[f].filter((_, i) => allowed[f][i]).join(" / "));
+  const per = `Periode: ${set.from} – ${set.to}`;
+  if (!act.length) return [per, "geen filter (alle setups)"];
+  return [per].concat(act.map((f) => LABEL[f] + ": " + ORDER[f].filter((_, i) => allowed[f][i]).join(" / ")));
 }
 
 // ---------------- weergave ----------------
@@ -325,19 +365,31 @@ function verdict(st) {
   const v = document.createElement("div"); v.className = "verdict";
   const b = document.createElement("span"); b.className = "badge";
   const L = lat(seen.size);
-  const ys = PERIOD.jaren || [];
-  const eachYear = ys.every((y) => st.years[y] && st.years[y][1] >= 20 && st.years[y][0] > 0);
+  const H = st.halves, eachYear = H.every((h) => h[1] >= 20 && h[0] > 0);
+  const out = stats(select(null, true));                 // zelfde filters buiten de gekozen periode
+  const outBad = out.n >= 100 && !(out.mean > 0);
   let txt;
   if (st.n < 100) { b.classList.add("noise"); b.textContent = "te weinig"; txt = `Maar ${st.n} trades: te weinig om iets te zeggen (minstens 100).`; }
   else if (!(st.mean > 0)) { b.classList.add("bad"); b.textContent = "verliesgevend"; txt = "Met kosten verliest deze combinatie geld."; }
   else if (st.t < L) { b.classList.add("noise"); b.textContent = "binnen toeval"; txt = `Positief, maar t = ${fT(st.t)} ligt onder de lat (${L.toFixed(1)}). Bij ${seen.size} pogingen is zo'n uitschieter normaal.`; }
-  else if (!eachYear) { b.classList.add("maybe"); b.textContent = "wisselvallig"; txt = `Boven de lat, maar niet positief in elk jaar (${ys.join(", ")}).`; }
-  else { b.classList.add("good"); b.textContent = "kandidaat"; txt = "Boven de lat en positief in elk jaar. Kandidaat om te bevriezen en te bevestigen."; }
+  else if (!eachYear) { b.classList.add("maybe"); b.textContent = "wisselvallig"; txt = "Boven de lat, maar niet positief in beide helften van je periode."; }
+  else if (outBad) { b.classList.add("maybe"); b.textContent = "alleen hier"; txt = "Boven de lat, maar buiten je periode verliest dezelfde combinatie. Waarschijnlijk toeval of een tijdelijke markt."; }
+  else { b.classList.add("good"); b.textContent = "kandidaat"; txt = "Boven de lat, positief in beide helften en niet negatief buiten je periode. Kandidaat om te bevriezen en te bevestigen."; }
   const s = document.createElement("span"); s.textContent = txt; v.append(b, s);
   const h = document.createElement("span"); h.className = "note";
-  h.textContent = ys.map((y) => `${y}: ${st.years[y] ? fV(st.years[y][0] / st.years[y][1]) + " (" + st.years[y][1] + ")" : "—"}`).join(" · ");
+  const lab = (lo, hi) => (lo === hi ? ymStr(lo) : `${ymStr(lo)} – ${ymStr(hi)}`);
+  const [ra, rb] = range(), m1 = Math.ceil(st.mid) - 1;
+  h.textContent = `1e helft (${lab(ra, Math.max(ra, m1))}): ${H[0][1] ? fV(H[0][0] / H[0][1]) + " (" + H[0][1] + ")" : "—"} · 2e helft (${lab(Math.min(rb, m1 + 1), rb)}): ${H[1][1] ? fV(H[1][0] / H[1][1]) + " (" + H[1][1] + ")" : "—"}`;
   v.appendChild(h);
-  return v;
+  const wrap = document.createElement("div"); wrap.style.display = "grid"; wrap.style.gap = "8px";
+  const o = document.createElement("div"); o.className = "verdict";
+  const ob = document.createElement("span"); ob.className = "badge " + (out.n < 100 ? "noise" : out.mean > 0 ? "good" : "bad");
+  ob.textContent = out.n < 100 ? "weinig data" : out.mean > 0 ? "houdt stand" : "houdt niet";
+  const os = document.createElement("span");
+  os.textContent = `Buiten je periode (zelfde filters, rest van de data): ${out.n.toLocaleString("nl-BE")} trades · ${fV(out.mean)} per trade · ${fV(out.free)} zonder kosten · t ${fT(out.t)}`;
+  o.append(ob, os);
+  wrap.append(v, o);
+  return wrap;
 }
 function card(title) { const c = document.createElement("section"); c.className = "card"; const h = document.createElement("h3"); h.textContent = title; c.appendChild(h); return c; }
 
@@ -358,11 +410,11 @@ function curveCard(st) {
     g.font = "11px IBM Plex Mono, monospace"; g.fillStyle = css("--muted"); g.strokeStyle = css("--line"); g.lineWidth = 1;
     const ticks = []; [0, lo, hi].forEach((v) => { if (ticks.every((u) => Math.abs(Y(u) - Y(v)) >= 14)) ticks.push(v); });
     ticks.forEach((v) => { const y = Y(v); g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke(); g.fillText(fV(v, true), 2, y + 4); });
-    // maandstrepen: elk kwartaal een label
-    const d0 = new Date(t0 * 60000), d1 = new Date(t1 * 60000);
+    // labels: per kwartaal bij een korte periode, anders per jaar (om de 2 bij veel jaren)
+    const d0 = new Date(t0 * 60000), d1 = new Date(t1 * 60000), span = (d1 - d0) / 3.15e10;
     for (let y = d0.getUTCFullYear(), m = d0.getUTCMonth() + 1; Date.UTC(y, m, 1) <= d1.getTime(); m++) {
       if (m > 11) { y++; m = 0; }
-      if (m % 3) continue;
+      if (span > 3 ? (m !== 0 || (span > 8 && y % 2)) : m % 3) continue;
       const x = X(Date.UTC(y, m, 1) / 60000); g.fillText((m === 0 ? String(y) : ["", "", "", "apr", "", "", "jul", "", "", "okt"][m]), x - 12, H - 4);
     }
     g.strokeStyle = cum >= 0 ? css("--up") : css("--down"); g.lineWidth = 2; g.beginPath();
@@ -375,7 +427,9 @@ function curveCard(st) {
   return c;
 }
 function monthCard(st) {
-  const c = card("Resultaat per maand (totaal)");
+  const [ra, rb] = range(), perYear = rb - ra + 1 > 36;
+  const c = card(perYear ? "Resultaat per jaar (totaal)" : "Resultaat per maand (totaal)");
+  if (perYear) { const y = {}; Object.entries(st.months).forEach(([m, v]) => { const k = m.slice(0, 4); (y[k] ||= [0, 0]); y[k][0] += v[0]; y[k][1] += v[1]; }); st = { ...st, months: y }; }
   const ms = Object.keys(st.months).sort();
   const cv = document.createElement("canvas"); cv.style.height = "220px"; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "Totaal resultaat per maand"); c.appendChild(cv);
   requestAnimationFrame(() => {
@@ -389,7 +443,8 @@ function monthCard(st) {
     g.font = "10px IBM Plex Mono, monospace";
     ms.forEach((m, i) => { const v = vals[i], x = pad.l + i * bw + 1, w = Math.max(2, bw - 2), h = Math.abs(v) * sc;
       g.fillStyle = v >= 0 ? css("--up") : css("--down"); g.fillRect(x, v >= 0 ? zero - h : zero, w, h);
-      if (m.endsWith("-01")) { g.fillStyle = css("--muted"); g.fillText(m.slice(0, 4), x, H - 5); } });
+      g.fillStyle = css("--muted");
+      if (perYear ? (bw > 26 || i % 2 === 0) : m.endsWith("-01")) g.fillText(perYear ? "'" + m.slice(2, 4) : m.slice(0, 4), x, H - 5); });
     cv.onmousemove = (e) => { const r = cv.getBoundingClientRect(); const i = Math.floor((e.clientX - r.left - pad.l) / bw);
       if (i >= 0 && i < ms.length) tip(e, `${ms[i]} · ${fV(vals[i], true)} · ${st.months[ms[i]][1]} trades`); };
     cv.onmouseleave = () => ($("tip").hidden = true);
@@ -442,7 +497,7 @@ function freezeCard(st) {
   btn.addEventListener("click", async () => {
     if (!armed) { armed = true; btn.textContent = "Zeker? Klik nog eens (definitief)"; return; }
     btn.disabled = true;
-    const doc = { naam: inp.value.trim() || "zonder naam", filters: describe(), key: filterKey(), gemaakt: Date.now(), periode: PERIOD.label,
+    const doc = { naam: inp.value.trim() || "zonder naam", filters: describe(), key: filterKey(), gemaakt: Date.now(), periode: `${set.from}..${set.to}`,
       instellingen: { eenheid: set.unit, lot: set.lot, een_tegelijk: set.oneAt },
       verkenning: { trades: st.n, gem: st.mean, totaal: st.total, zonder_kosten: st.free, t: st.t, pogingen: seen.size }, status: "wacht op test" };
     try { await db.doc("bevroren/b" + doc.gemaakt).set(JSON.parse(JSON.stringify(doc))); frozen.push(doc); renderTop(); update(); }
@@ -483,7 +538,8 @@ async function initDb() {
   loadSettings(); wireSettings();
   try { await Promise.all([loadAll(), initDb()]); }
   catch (e) { $("body").textContent = ""; const d = document.createElement("div"); d.className = "loading"; d.textContent = "Data laden mislukt: " + e.message; $("body").appendChild(d); return; }
-  $("periodNote").textContent = `${PERIOD.label} (t/m 9 okt 2026) · M15 · EURUSD, GBPUSD, goud · jouw uitstap (38,2% · SL onder OB · TP oude high max 2R)`;
+  $("periodNote").textContent = `data t/m ${PERIOD.einde} · M15 · EURUSD, GBPUSD, goud (goud vanaf 2016) · jouw uitstap (38,2% · SL onder OB · TP oude high max 2R)`;
+  wirePeriod();
   renderFilters(); renderTop(); update();
   let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(update, 150); });
 })();
