@@ -66,3 +66,11 @@ curve (cumulatieve R), per jaar, vóór 2020 vs 2020–24, en een uitsplitsing "
   bevestigingshelft (zelfde regels, met portefeuille: één positie per markt, dagstop). Alleen die uitslag telt.
   Poort: n ≥ 100, gem. netto ≥ +0,10R, t ≥ 2,0, positief in 2020–22 én 2023–24.
 - 2025–2026 wordt niet gebruikt.
+
+## 8. Publicatie en controle (12 okt 2026)
+Pagina `dashboard/page.html`; data met `python -m scripts.dashboard_build` → `dashboard_events.pkl`, daarna
+`python -m scripts.dashboard_export <pkl> <map>/data` (base64 gzip-JSON per markt). Gepubliceerd als artifact
+"KATSU Bouwstenen" met db-opslag: `teller/pogingen` (bekeken combinaties) en `bevroren/<id>` (max. 3).
+Controle: de pagina geeft exact dezelfde cijfers als Python op `dashboard_events.pkl`
+(alles: 179 996 gevulde trades, −0,200R, zonder kosten −0,062R, placebo zonder kosten −0,021R;
+FVG + BOS: 5 917 trades, −0,228R).

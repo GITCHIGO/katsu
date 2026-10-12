@@ -1,0 +1,407 @@
+<title>KATSU Bouwstenen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: filterkolom links (bouwstenen als aan/uit-chips), resultaat rechts: kerncijfers, curve, per jaar,
+   uitsplitsing per bouwsteen. Zelfde donkere terminal-look als KATSU Replay; bewust één thema. */
+:root {
+  color-scheme: dark;
+  --bg: #0f141b; --panel: #151c25; --panel-2: #1b2430; --line: #263243;
+  --fg: #d5dce5; --muted: #8392a5; --accent: #e3a33b; --up: #2bb39a; --down: #e0565b; --warn: #d9a441; --info: #5aa7e6;
+  --ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--ui); }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.top { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.brand { font-weight: 600; letter-spacing: .14em; font-size: 12px; color: var(--accent); }
+.note { color: var(--muted); font-size: 12px; }
+.pill { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+.pill.warn { border-color: var(--warn); }
+.spacer { flex: 1; }
+.wrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: calc(100% - 46px); }
+.filters { background: var(--panel); border-right: 1px solid var(--line); padding: 12px 14px; display: grid; gap: 14px; align-content: start; overflow-y: auto; max-height: calc(100vh - 46px); position: sticky; top: 0; }
+.grp h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+.grp h2 button { background: none; border: 0; color: var(--muted); font-size: 11px; text-transform: none; letter-spacing: 0; padding: 0; }
+.feat { display: grid; gap: 4px; margin-bottom: 9px; }
+.feat .name { font-size: 12px; color: var(--fg); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 1px 9px; font-size: 12px; color: var(--fg); }
+.chip[aria-pressed="false"] { background: transparent; color: var(--muted); text-decoration: line-through; opacity: .7; }
+.main { padding: 16px; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.active { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 26px; }
+.active .tag { font-size: 12px; background: color-mix(in srgb, var(--accent) 18%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); border-radius: 12px; padding: 1px 9px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.kpi .k { font-size: 12px; color: var(--muted); }
+.kpi .s { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.pos { color: var(--up); } .neg { color: var(--down); }
+.verdict { border-radius: 6px; padding: 10px 12px; border: 1px solid var(--line); background: var(--panel); font-size: 13px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.verdict b { font-weight: 600; }
+.verdict .badge { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; }
+.badge.noise { background: var(--line); }
+.badge.maybe { background: color-mix(in srgb, var(--warn) 35%, transparent); }
+.badge.good { background: color-mix(in srgb, var(--up) 35%, transparent); }
+.badge.bad { background: color-mix(in srgb, var(--down) 35%, transparent); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.card h3 { margin: 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+canvas { width: 100%; display: block; }
+.tip { position: fixed; pointer-events: none; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font: 12px var(--mono); z-index: 10; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: right; font-weight: 500; color: var(--muted); font-size: 12px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+td { text-align: right; padding: 5px 6px; font-family: var(--mono); border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+th:first-child, td:first-child { text-align: left; font-family: var(--ui); }
+tr.best td:first-child::after { content: " ★"; color: var(--accent); }
+.tablewrap { overflow-x: auto; }
+select { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+.freeze { display: grid; gap: 8px; }
+.freeze input { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; }
+.go { border: 0; border-radius: 4px; padding: 7px 12px; font-weight: 600; background: var(--accent); color: #241603; }
+.go:disabled { opacity: .45; cursor: default; }
+.ghost { border: 1px solid var(--line); background: transparent; border-radius: 4px; padding: 6px 10px; }
+.frozen { display: grid; gap: 6px; font-size: 12px; }
+.frozen div { border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; background: var(--panel-2); }
+.loading { padding: 40px; text-align: center; color: var(--muted); }
+.explain { color: var(--muted); font-size: 12px; max-width: 75ch; }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: 1fr; }
+  .filters { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+  .row2 { grid-template-columns: 1fr; }
+}
+</style>
+
+<header class="top">
+  <span class="brand">KATSU BOUWSTENEN</span>
+  <span class="note">Verkenningsdata · M15 · EURUSD, GBPUSD, goud · jouw uitstap (38,2% · SL onder OB · TP oude high max 2R)</span>
+  <span class="spacer"></span>
+  <span class="pill" id="tries" title="Hoeveel verschillende filtercombinaties je al bekeken hebt">pogingen: —</span>
+  <span class="pill" id="frozenCount" title="Combinaties die op de bevestigingshelft getest worden">bevroren: —/3</span>
+  <span class="note" id="dbState">opslag: verbinden…</span>
+</header>
+
+<div class="wrap">
+  <nav class="filters" id="filters" aria-label="Bouwstenen"></nav>
+  <main class="main">
+    <div class="active" id="active"></div>
+    <div id="body"><div class="loading">Data laden…</div></div>
+  </main>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const GROUPS = [
+  ["Basis", [["markt", "Markt"], ["soort", "Soort setup"], ["richting", "Richting"]]],
+  ["Structuur", [["breuk", "Breuk (BOS/CHoCH)"], ["sweep_swing", "Sweep swing vooraf"], ["sweep_dag", "Sweep low/high gisteren"],
+    ["sweep_azie", "Sweep Azië-range"], ["order_block", "Order block"], ["fvg_nummer", "Hoeveelste FVG"]]],
+  ["Trend", [["trend_m15", "Trend M15"], ["trend_h1", "Trend H1"], ["trend_h4", "Trend H4"], ["trend_d1", "Trend D1"], ["premium_discount", "Premium/discount"]]],
+  ["Tijd (Belgisch)", [["sessie", "Sessie"], ["uur", "Uur"], ["weekdag", "Weekdag"], ["silver_bullet", "Silver Bullet-venster"], ["nfp_dag", "NFP-dag"]]],
+  ["Vorm & markt", [["gat_atr", "Grootte gat (× ATR)"], ["displacement", "Displacement (× ATR)"], ["candle3_vol", "Candle 3 vol"],
+    ["sl_atr", "SL (× ATR)"], ["rr_plan", "Geplande RR"], ["kosten", "Kosten (R)"], ["volatiliteit", "Volatiliteit"]]],
+];
+const FEATS = GROUPS.flatMap((g) => g[1].map((f) => f[0]));
+const LABEL = Object.fromEntries(GROUPS.flatMap((g) => g[1]));
+const MARKETS = ["EURUSD", "GBPUSD", "XAUUSD"];
+const MAX_FROZEN = 3;
+let D = null, ORDER = null, MISSING = -2147483648;
+const allowed = {};                        // feature -> Uint8Array(1 = toegestaan)
+let breakdownFeat = "breuk";
+let db = null, seen = new Set(), frozen = [];
+
+// ---------------- data ----------------
+async function loadMarket(m) {
+  const txt = (await (await fetch("data/" + m + ".txt")).text()).trim();
+  const bin = atob(txt); const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return JSON.parse(await new Response(ds).text());
+}
+async function loadAll() {
+  const parts = await Promise.all(MARKETS.map(loadMarket));
+  ORDER = parts[0].order; MISSING = parts[0].missing;
+  const n = parts.reduce((s, p) => s + p.n, 0);
+  const cols = {};
+  const catCols = Object.keys(ORDER), numCols = ["r_net", "r_free", "r_placebo", "r_placebo_free", "pips", "jaar", "week", "ts"];
+  catCols.forEach((c) => (cols[c] = new Uint8Array(n)));
+  numCols.forEach((c) => (cols[c] = c === "ts" ? new Float64Array(n) : new Int32Array(n)));
+  let off = 0;
+  parts.forEach((p) => { catCols.forEach((c) => cols[c].set(p.cols[c], off)); numCols.forEach((c) => cols[c].set(p.cols[c], off)); off += p.n; });
+  // globale tijdsvolgorde (voor de curve)
+  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => cols.ts[a] - cols.ts[b]);
+  const sorted = {};
+  Object.keys(cols).forEach((c) => { const src = cols[c]; const dst = new src.constructor(n); for (let i = 0; i < n; i++) dst[i] = src[idx[i]]; sorted[c] = dst; });
+  D = { n, cols: sorted, scale: parts[0].scale };
+  FEATS.forEach((f) => { allowed[f] = new Uint8Array(ORDER[f].length).fill(1); });
+}
+
+// ---------------- statistiek ----------------
+function activeFeats(except) { return FEATS.filter((f) => f !== except && allowed[f].some((v) => !v)); }
+function select(except) {
+  const act = activeFeats(except), C = D.cols, out = [];
+  for (let i = 0; i < D.n; i++) {
+    let ok = true;
+    for (const f of act) if (!allowed[f][C[f][i]]) { ok = false; break; }
+    if (ok) out.push(i);
+  }
+  return out;
+}
+function stats(rows) {
+  const C = D.cols, S = D.scale;
+  const filled = rows.filter((i) => C.vulling[i] === 0 && C.r_net[i] !== MISSING);
+  const n = filled.length;
+  const r = (col, i) => C[col][i] / S[col];
+  let sum = 0, sumF = 0, nF = 0, sumP = 0, nP = 0, sumPF = 0, nPF = 0, win = 0;
+  const pips = {}, years = {}, half = { voor: [0, 0], na: [0, 0] };
+  for (const i of filled) {
+    const x = r("r_net", i); sum += x; if (x > 0) win++;
+    if (C.r_free[i] !== MISSING) { sumF += r("r_free", i); nF++; }
+    if (C.r_placebo[i] !== MISSING) { sumP += r("r_placebo", i); nP++; }
+    if (C.r_placebo_free[i] !== MISSING) { sumPF += r("r_placebo_free", i); nPF++; }
+    const m = MARKETS[C.markt[i]]; if (C.pips[i] !== MISSING) { (pips[m] ||= [0, 0]); pips[m][0] += r("pips", i); pips[m][1]++; }
+    const y = C.jaar[i]; (years[y] ||= [0, 0]); years[y][0] += x; years[y][1]++;
+    const h = y < 2020 ? half.voor : half.na; h[0] += x; h[1]++;
+  }
+  const mean = n ? sum / n : NaN;
+  const wk = new Map();
+  for (const i of filled) { const w = C.week[i]; wk.set(w, (wk.get(w) || 0) + (r("r_net", i) - mean)); }
+  let ss = 0; wk.forEach((v) => (ss += v * v));
+  const se = n > 1 ? Math.sqrt(ss) / n : NaN;
+  return { setups: rows.length, n, win: n ? win / n : NaN, mean, t: se > 0 ? mean / se : NaN, free: nF ? sumF / nF : NaN,
+    plac: nP ? sumP / nP : NaN, placFree: nPF ? sumPF / nPF : NaN, pips, years, half, filled };
+}
+const lat = (N) => Math.sqrt(2 * Math.log(Math.max(N, 2)));
+const fR = (x) => (isFinite(x) ? (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(3) + "R" : "—");
+const fP = (x) => (isFinite(x) ? (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(1) : "—");
+const cls = (x) => (isFinite(x) ? (x >= 0 ? "pos" : "neg") : "");
+
+// ---------------- filters ----------------
+function renderFilters() {
+  const box = $("filters"); box.textContent = "";
+  GROUPS.forEach(([gname, feats]) => {
+    const g = document.createElement("section"); g.className = "grp";
+    const h = document.createElement("h2"); h.textContent = gname;
+    const rs = document.createElement("button"); rs.textContent = "alles aan";
+    rs.addEventListener("click", () => { feats.forEach(([f]) => allowed[f].fill(1)); renderFilters(); update(); });
+    h.appendChild(rs); g.appendChild(h);
+    feats.forEach(([f, label]) => {
+      const w = document.createElement("div"); w.className = "feat";
+      const nm = document.createElement("span"); nm.className = "name"; nm.textContent = label; w.appendChild(nm);
+      const chips = document.createElement("div"); chips.className = "chips";
+      ORDER[f].forEach((v, code) => {
+        if (v === "onbekend") return;
+        const b = document.createElement("button"); b.className = "chip"; b.textContent = v; b.setAttribute("aria-pressed", String(!!allowed[f][code]));
+        b.title = "Klik: aan/uit · Alt-klik: alleen deze";
+        b.addEventListener("click", (e) => {
+          if (e.altKey) { allowed[f].fill(0); allowed[f][code] = 1; }
+          else { allowed[f][code] = allowed[f][code] ? 0 : 1; if (!allowed[f].some((x) => x)) allowed[f].fill(1); }
+          renderFilters(); update();
+        });
+        chips.appendChild(b);
+      });
+      w.appendChild(chips); g.appendChild(w);
+    });
+    box.appendChild(g);
+  });
+}
+function filterKey() {
+  return activeFeats().map((f) => f + ":" + [...allowed[f]].map((v, i) => (v ? ORDER[f][i] : null)).filter((x) => x !== null).join("|")).join(";");
+}
+function describe() {
+  const act = activeFeats();
+  if (!act.length) return ["geen filter (alle setups)"];
+  return act.map((f) => LABEL[f] + ": " + ORDER[f].filter((_, i) => allowed[f][i]).join(" / "));
+}
+
+// ---------------- weergave ----------------
+function update() {
+  const rows = select(null), st = stats(rows);
+  const a = $("active"); a.textContent = "";
+  describe().forEach((t) => { const s = document.createElement("span"); s.className = "tag"; s.textContent = t; a.appendChild(s); });
+  countTry();
+  const body = $("body"); body.textContent = "";
+  // kerncijfers
+  const k = document.createElement("div"); k.className = "kpis";
+  const pipTxt = MARKETS.filter((m) => st.pips[m]).map((m) => `${m.slice(0, 3)} ${fP(st.pips[m][0] / st.pips[m][1])}`).join(" · ");
+  [[st.n.toLocaleString("nl-BE"), "trades (gevuld)", `${st.setups.toLocaleString("nl-BE")} setups · ${st.setups ? Math.round(100 * st.n / st.setups) : 0}% gevuld`, ""],
+   [isFinite(st.win) ? Math.round(100 * st.win) + "%" : "—", "winrate", "", ""],
+   [fR(st.mean), "gem. per trade, met kosten", pipTxt ? "pips: " + pipTxt : "", cls(st.mean)],
+   [fR(st.free), "zonder kosten", "", cls(st.free)],
+   [fR(st.free - st.placFree), "beter dan willekeurig?", `willekeurig zelfde uur: ${fR(st.placFree)} (zonder kosten)`, cls(st.free - st.placFree)],
+   [isFinite(st.t) ? st.t.toFixed(2).replace("-", "−") : "—", "t-waarde", `lat bij ${seen.size} pogingen ≈ ${lat(seen.size).toFixed(1)}`, ""]].forEach(([v, lab, sub, c]) => {
+    const d = document.createElement("div"); d.className = "kpi";
+    const a1 = document.createElement("span"); a1.className = "v " + c; a1.textContent = v;
+    const a2 = document.createElement("span"); a2.className = "k"; a2.textContent = lab;
+    d.append(a1, a2); if (sub) { const a3 = document.createElement("span"); a3.className = "s"; a3.textContent = sub; d.appendChild(a3); }
+    k.appendChild(d);
+  });
+  body.appendChild(k);
+  body.appendChild(verdict(st));
+  // curve + per jaar
+  const r2 = document.createElement("div"); r2.className = "row2";
+  r2.append(curveCard(st), yearCard(st)); body.appendChild(r2);
+  body.appendChild(breakdownCard());
+  body.appendChild(freezeCard(st));
+}
+function verdict(st) {
+  const v = document.createElement("div"); v.className = "verdict";
+  const b = document.createElement("span"); b.className = "badge";
+  let txt;
+  const L = lat(seen.size);
+  if (st.n < 100) { b.classList.add("noise"); b.textContent = "te weinig"; txt = `Maar ${st.n} trades: te weinig om iets te zeggen (minstens 100).`; }
+  else if (!(st.mean > 0)) { b.classList.add("bad"); b.textContent = "verliesgevend"; txt = "Met kosten verliest deze combinatie geld."; }
+  else if (st.t < L) { b.classList.add("noise"); b.textContent = "binnen toeval"; txt = `Positief, maar t = ${st.t.toFixed(2)} ligt onder de lat (${L.toFixed(1)}). Bij ${seen.size} pogingen is zo'n uitschieter normaal.`; }
+  else if (!(st.half.voor[1] >= 20 && st.half.na[1] >= 20 && st.half.voor[0] > 0 && st.half.na[0] > 0)) { b.classList.add("maybe"); b.textContent = "wisselvallig"; txt = "Boven de lat, maar niet positief in beide periodes (vóór 2020 en 2020–24)."; }
+  else { b.classList.add("good"); b.textContent = "kandidaat"; txt = "Boven de lat en positief in beide periodes. Kandidaat om te bevriezen en te bevestigen."; }
+  const s = document.createElement("span"); s.textContent = txt; v.append(b, s);
+  const h = document.createElement("span"); h.className = "note";
+  const pre = st.half.voor[1] ? fR(st.half.voor[0] / st.half.voor[1]) : "—", post = st.half.na[1] ? fR(st.half.na[0] / st.half.na[1]) : "—";
+  h.textContent = `vóór 2020: ${pre} (${st.half.voor[1]}) · 2020–24: ${post} (${st.half.na[1]})`; v.appendChild(h);
+  return v;
+}
+function card(title) { const c = document.createElement("section"); c.className = "card"; const h = document.createElement("h3"); h.textContent = title; c.appendChild(h); return c; }
+
+function curveCard(st) {
+  const c = card("Cumulatief resultaat (R, alle trades na elkaar)");
+  const cv = document.createElement("canvas"); cv.style.height = "220px"; cv.setAttribute("role", "img");
+  cv.setAttribute("aria-label", "Cumulatief resultaat in R over de tijd"); c.appendChild(cv);
+  requestAnimationFrame(() => {
+    const C = D.cols, S = D.scale, dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = 220;
+    cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr);
+    const pts = []; let cum = 0;
+    for (const i of st.filled) { cum += C.r_net[i] / S.r_net; pts.push([C.ts[i], cum]); }
+    if (pts.length < 2) return;
+    const step = Math.max(1, Math.floor(pts.length / 1500)); const P = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+    const t0 = P[0][0], t1 = P[P.length - 1][0]; let lo = 0, hi = 0; P.forEach((p) => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
+    const pad = { l: 48, r: 10, t: 10, b: 20 }; const X = (t) => pad.l + (t - t0) / (t1 - t0 || 1) * (W - pad.l - pad.r);
+    const Y = (v) => pad.t + (hi - v) / (hi - lo || 1) * (H - pad.t - pad.b);
+    g.font = "11px IBM Plex Mono, monospace"; g.fillStyle = css("--muted"); g.strokeStyle = css("--line"); g.lineWidth = 1;
+    [lo, 0, hi].forEach((v) => { const y = Y(v); g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke(); g.fillText((v >= 0 ? "+" : "") + Math.round(v) + "R", 2, y + 4); });
+    const yr0 = new Date(t0 * 60000).getUTCFullYear(), yr1 = new Date(t1 * 60000).getUTCFullYear();
+    for (let y = yr0 + 1; y <= yr1; y++) { const x = X(Date.UTC(y, 0, 1) / 60000); g.fillText(String(y), x - 14, H - 4); }
+    g.strokeStyle = cum >= 0 ? css("--up") : css("--down"); g.lineWidth = 2; g.beginPath();
+    P.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1])))); g.stroke();
+    const last = P[P.length - 1]; g.fillStyle = g.strokeStyle; g.beginPath(); g.arc(X(last[0]), Y(last[1]), 3.5, 0, 7); g.fill();
+    cv.onmousemove = (e) => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left; const t = t0 + (x - pad.l) / (W - pad.l - pad.r) * (t1 - t0);
+      let j = 0; while (j < P.length - 1 && P[j][0] < t) j++; tip(e, `${new Date(P[j][0] * 60000).toISOString().slice(0, 7)} · ${fR(P[j][1]).replace("R", "")} R`); };
+    cv.onmouseleave = () => ($("tip").hidden = true);
+  });
+  return c;
+}
+function yearCard(st) {
+  const c = card("Gemiddeld per jaar");
+  const ys = Object.keys(st.years).sort();
+  const cv = document.createElement("canvas"); cv.style.height = "220px"; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "Gemiddeld resultaat per jaar"); c.appendChild(cv);
+  requestAnimationFrame(() => {
+    const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = 220; cv.width = W * dpr; cv.height = H * dpr;
+    const g = cv.getContext("2d"); g.scale(dpr, dpr); if (!ys.length) return;
+    const vals = ys.map((y) => st.years[y][0] / st.years[y][1]); const m = Math.max(0.1, ...vals.map(Math.abs));
+    const pad = { l: 8, r: 8, t: 10, b: 20 }, bw = (W - pad.l - pad.r) / ys.length, zero = pad.t + (H - pad.t - pad.b) / 2, sc = (H - pad.t - pad.b) / 2 / m;
+    g.strokeStyle = css("--line"); g.beginPath(); g.moveTo(pad.l, zero); g.lineTo(W - pad.r, zero); g.stroke();
+    g.font = "10px IBM Plex Mono, monospace";
+    ys.forEach((y, i) => { const v = vals[i], x = pad.l + i * bw + 2, w = Math.max(2, bw - 4), h = Math.abs(v) * sc;
+      g.fillStyle = v >= 0 ? css("--up") : css("--down"); g.fillRect(x, v >= 0 ? zero - h : zero, w, h);
+      g.fillStyle = css("--muted"); if (bw > 22 || i % 2 === 0) g.fillText("'" + y.slice(2), x + w / 2 - 8, H - 5); });
+    cv.onmousemove = (e) => { const r = cv.getBoundingClientRect(); const i = Math.floor((e.clientX - r.left - pad.l) / bw);
+      if (i >= 0 && i < ys.length) tip(e, `${ys[i]} · ${fR(vals[i])} · ${st.years[ys[i]][1]} trades`); };
+    cv.onmouseleave = () => ($("tip").hidden = true);
+  });
+  return c;
+}
+function breakdownCard() {
+  const c = card("Welke waarde werkt het best?");
+  const h = c.querySelector("h3");
+  const sel = document.createElement("select"); sel.id = "bdSel"; sel.setAttribute("aria-label", "Bouwsteen");
+  FEATS.forEach((f) => { const o = document.createElement("option"); o.value = f; o.textContent = LABEL[f]; if (f === breakdownFeat) o.selected = true; sel.appendChild(o); });
+  sel.addEventListener("change", () => { breakdownFeat = sel.value; update(); });
+  h.appendChild(sel);
+  const ex = document.createElement("p"); ex.className = "explain";
+  ex.textContent = "Met alle andere filters zoals links ingesteld, maar alle waarden van deze bouwsteen naast elkaar. Elke waarde die je hier bekijkt, telt als poging zodra je ze als filter kiest.";
+  c.appendChild(ex);
+  const rows = select(breakdownFeat), C = D.cols;
+  const groups = ORDER[breakdownFeat].map(() => []);
+  rows.forEach((i) => groups[C[breakdownFeat][i]].push(i));
+  const res = groups.map((g, code) => ({ v: ORDER[breakdownFeat][code], s: stats(g) })).filter((x) => x.s.setups > 0);
+  const best = res.filter((x) => x.s.n >= 100).reduce((b, x) => (!b || x.s.mean > b.s.mean ? x : b), null);
+  const tw = document.createElement("div"); tw.className = "tablewrap";
+  const t = document.createElement("table");
+  const hr = document.createElement("tr"); ["waarde", "trades", "win", "met kosten", "zonder kosten", "vs willekeurig", "t"].forEach((x) => { const th = document.createElement("th"); th.textContent = x; hr.appendChild(th); });
+  t.appendChild(hr);
+  res.forEach((x) => { const tr = document.createElement("tr"); if (x === best) tr.className = "best";
+    const cells = [x.v, x.s.n.toLocaleString("nl-BE"), isFinite(x.s.win) ? Math.round(100 * x.s.win) + "%" : "—", fR(x.s.mean), fR(x.s.free), fR(x.s.free - x.s.placFree), isFinite(x.s.t) ? x.s.t.toFixed(2) : "—"];
+    const cl = ["", "", "", cls(x.s.mean), cls(x.s.free), cls(x.s.free - x.s.placFree), ""];
+    cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (cl[i]) td.className = cl[i]; tr.appendChild(td); });
+    t.appendChild(tr); });
+  tw.appendChild(t); c.appendChild(tw);
+  return c;
+}
+function freezeCard(st) {
+  const c = card(`Bevriezen voor de bevestigingshelft (${frozen.length}/${MAX_FROZEN})`);
+  const ex = document.createElement("p"); ex.className = "explain";
+  ex.textContent = "Bevries een combinatie die je echt wil laten testen. Claude test ze één keer op de even maanden 2020–2024, die nog niemand gezien heeft. Alleen die uitslag telt. Je kan er maximaal 3 bevriezen; bevroren is definitief.";
+  c.appendChild(ex);
+  const f = document.createElement("div"); f.className = "freeze";
+  const inp = document.createElement("input"); inp.id = "freezeName"; inp.placeholder = "Naam of korte uitleg van deze combinatie";
+  const btn = document.createElement("button"); btn.className = "go"; btn.textContent = "Bevries deze combinatie";
+  const msg = document.createElement("span"); msg.className = "note";
+  const dup = frozen.some((z) => z.key === filterKey());
+  btn.disabled = frozen.length >= MAX_FROZEN || !db || st.n < 100 || dup;
+  if (!db) msg.textContent = "Opslag niet beschikbaar: bevriezen kan hier niet.";
+  else if (dup) msg.textContent = "Deze combinatie is al bevroren.";
+  else if (frozen.length >= MAX_FROZEN) msg.textContent = "Alle 3 plaatsen zijn gebruikt.";
+  else if (st.n < 100) msg.textContent = "Minstens 100 trades nodig om te bevriezen.";
+  let armed = false;
+  btn.addEventListener("click", async () => {
+    if (!armed) { armed = true; btn.textContent = "Zeker? Klik nog eens (definitief)"; return; }
+    btn.disabled = true;
+    const doc = { naam: inp.value.trim() || "zonder naam", filters: describe(), key: filterKey(), gemaakt: Date.now(),
+      verkenning: { trades: st.n, gem_R: st.mean, zonder_kosten: st.free, t: st.t, pogingen: seen.size }, status: "wacht op test" };
+    try { await db.doc("bevroren/b" + doc.gemaakt).set(JSON.parse(JSON.stringify(doc))); frozen.push(doc); renderTop(); update(); }
+    catch (e) { msg.textContent = "Bewaren mislukt."; btn.disabled = false; }
+  });
+  f.append(inp, btn, msg); c.appendChild(f);
+  if (frozen.length) { const l = document.createElement("div"); l.className = "frozen";
+    frozen.forEach((z) => { const d = document.createElement("div"); d.textContent = `${z.naam} — ${z.filters.join(" · ")} — ${z.status}`; l.appendChild(d); });
+    c.appendChild(l); }
+  return c;
+}
+function tip(e, txt) { const t = $("tip"); t.textContent = txt; t.hidden = false; t.style.left = e.clientX + 12 + "px"; t.style.top = e.clientY + 12 + "px"; }
+
+// ---------------- pogingen en opslag ----------------
+let pendingTry = null;
+function countTry() {
+  const key = filterKey(); if (!key || seen.has(key)) { renderTop(); return; }
+  clearTimeout(pendingTry);
+  pendingTry = setTimeout(async () => {               // pas tellen als je even bij een combinatie blijft
+    if (seen.has(key)) return; seen.add(key); renderTop();
+    if (db) { try { await db.doc("teller/pogingen").set({ keys: [...seen], n: seen.size, bijgewerkt: Date.now() }); } catch (e) { setDb(false, "opslaan mislukt"); } }
+  }, 1500);
+}
+function renderTop() { $("tries").textContent = `pogingen: ${seen.size} · lat ≈ ${lat(seen.size).toFixed(1)}`; $("frozenCount").textContent = `bevroren: ${frozen.length}/${MAX_FROZEN}`;
+  $("frozenCount").classList.toggle("warn", frozen.length >= MAX_FROZEN); }
+function setDb(ok, txt) { $("dbState").textContent = "opslag: " + txt; $("dbState").style.color = ok ? "" : css("--down"); }
+async function initDb() {
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+  if (!db) { setDb(false, "niet beschikbaar"); return; }
+  try {
+    const t = await db.doc("teller/pogingen").get(); if (t.exists) (t.data().keys || []).forEach((k) => seen.add(k));
+    const f = await db.collection("bevroren").get(); frozen = f.docs.map((d) => d.data()).sort((a, b) => a.gemaakt - b.gemaakt);
+    setDb(true, "bewaard");
+  } catch (e) { setDb(false, "laden mislukt"); }
+}
+
+(async () => {
+  try { await Promise.all([loadAll(), initDb()]); }
+  catch (e) { $("body").innerHTML = ""; const d = document.createElement("div"); d.className = "loading"; d.textContent = "Data laden mislukt: " + e.message; $("body").appendChild(d); return; }
+  renderFilters(); renderTop(); update();
+  window.addEventListener("resize", () => update());
+})();
+})();
+</script>
