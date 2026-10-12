@@ -363,7 +363,7 @@ function render(force) {
   $("clock").textContent = beLabel(S.t[S.cursor] + 1);
   const past = S.cursor < S.maxCursor;
   $("clock").classList.toggle("past", past); $("pastBanner").hidden = !past;
-  $("place").disabled = past || !S.ep; $("skipBtn").disabled = past || !S.ep; $("doubtSkipBtn").disabled = past || !S.ep;
+  $("place").disabled = past || !S.ep; $("skipBtn").disabled = !S.ep; $("doubtSkipBtn").disabled = !S.ep;
   $("fwd").disabled = S.cursor >= S.n - 1; $("back").disabled = S.cursor <= 0;
   updatePriceLines(); renderOrders(); updateRR();
 }
@@ -574,6 +574,7 @@ function placeOrder(virtual, kind) {
       Object.assign(dec, { type, entry: type === "market" ? null : e, sl, tp, status: "pending" });
       S.orders.push(dec); clearTicket();
     }
+    if (dec.status === "pending") catchUp(dec);          // teruggekeken: speel de hypothetische trade bij tot nu
     S.decisions.push(dec); persistOrder(dec); toast(kind === "twijfel_niet" ? "Twijfel, niet genomen: bewaard" : "Gezien, niet genomen: bewaard");
     return true;
   }
@@ -581,6 +582,15 @@ function placeOrder(virtual, kind) {
   const o = Object.assign(base, { id: newId("t"), virtual: false, type, entry: type === "market" ? null : e, sl, tp, why: $("fWhy").value.trim(), status: "pending" });
   S.orders.push(o); persistOrder(o); toast("Order geplaatst"); clearTicket();
   render(false); return true;
+}
+function catchUp(o) {
+  // Een "niet genomen"-setup mag ook bewaard worden terwijl je terugkijkt. De hypothetische trade wordt dan
+  // afgespeeld vanaf het moment van de setup tot het verste punt, met dezelfde regels.
+  for (let i = o.fromIdx; i <= S.maxCursor && (o.status === "pending" || o.status === "open"); i++) {
+    if (o.status === "open" && i <= o.fillIdx) continue;
+    const ev = KatsuSim.step(o, { t: S.t[i], o: S.o[i], h: S.h[i], l: S.l[i], c: S.c[i], s: S.s[i] }, S.spec);
+    if (ev.includes("gevuld")) o.fillIdx = i;
+  }
 }
 function clearTicket() { ["fE", "fS", "fT", "fWhy"].forEach((id) => ($(id).value = "")); $("fDoubt").checked = false; onTicketChange(); }
 function persistOrder(o) {
