@@ -97,11 +97,24 @@ textarea { resize: vertical; min-height: 34px; }
 .pill.doubt { background: color-mix(in srgb, var(--warn) 35%, transparent); }
 .pill.virt { background: color-mix(in srgb, var(--info) 35%, transparent); }
 .pos { color: var(--up); } .neg { color: var(--down); }
-.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 10px; font-size: 12px; }
-.stats div { display: flex; justify-content: space-between; gap: 6px; }
-.stats span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.scope { width: 100%; }
+.scope button { flex: 1; font-family: var(--ui); font-size: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.kpi { background: var(--panel-2); border-radius: 4px; padding: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--mono); font-size: 16px; font-variant-numeric: tabular-nums; }
+.kpi .k { font-size: 11px; color: var(--muted); }
+table.grp, table.jt { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+table.grp th, table.jt th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11px; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+table.grp th:first-child, table.jt th:first-child { text-align: left; }
+table.grp td, table.jt td { text-align: right; padding: 4px; font-family: var(--mono); border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+table.grp td:first-child, table.jt td:first-child { text-align: left; font-family: var(--ui); }
+table.grp tr.dim td { color: var(--muted); }
+.sub { margin: 4px 0 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.tag { font-size: 10px; padding: 0 5px; border-radius: 8px; margin-left: 4px; font-family: var(--ui); }
+.tag.hyp { background: color-mix(in srgb, var(--info) 30%, transparent); }
+.tag.dbt { background: color-mix(in srgb, var(--warn) 30%, transparent); }
 .empty { color: var(--muted); font-size: 12px; }
-.journal { display: grid; gap: 4px; max-height: 260px; overflow-y: auto; }
+.journal { max-height: 300px; overflow-y: auto; }
 .journal .j { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; font-size: 12px; font-family: var(--mono); align-items: center; }
 .modal { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 80%, transparent); z-index: 20; display: grid; place-items: center; padding: 16px; }
 .modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; width: min(760px, 100%); max-height: 90%; overflow: auto; display: grid; gap: 12px; }
@@ -151,7 +164,7 @@ textarea { resize: vertical; min-height: 34px; }
     <label class="check"><input type="checkbox" id="sessions"> sessies</label>
     <span class="dbstate" id="dbState">opslag: verbinden…</span>
     <button class="ep-btn" id="reload" title="Pagina vernieuwen (je voortgang blijft bewaard)">↻ Vernieuwen</button>
-    <span class="dbstate" title="Versie van de pagina">v7</span>
+    <span class="dbstate" title="Versie van de pagina">v8</span>
   </header>
 
   <div class="main">
@@ -210,8 +223,12 @@ textarea { resize: vertical; min-height: 34px; }
 
       <section class="sec" aria-labelledby="stH">
         <h2 id="stH">Resultaat</h2>
-        <div class="stats" id="stats"></div>
-        <div class="journal" id="journal"></div>
+        <div class="seg scope" id="scopeSeg" role="group" aria-label="Bereik"><button data-scope="ep" aria-pressed="true">Deze episode</button><button data-scope="all" aria-pressed="false">Alle episodes</button></div>
+        <div class="kpis" id="kpis"></div>
+        <table class="grp" id="groups" aria-label="Resultaat per soort"></table>
+        <h3 class="sub">Journaal</h3>
+        <div class="seg scope" id="jSeg" role="group" aria-label="Journaal filter"><button data-f="all" aria-pressed="true">Alles</button><button data-f="real" aria-pressed="false">Genomen</button><button data-f="hyp" aria-pressed="false">Niet genomen</button></div>
+        <div class="journal"><table class="jt" id="journal"></table></div>
       </section>
     </aside>
   </div>
@@ -682,27 +699,57 @@ function renderOrders() {
   });
 }
 
-function renderStats() {
-  const closed = [...S.allTrades.values()].filter((o) => o.status === "closed");
-  const sumUsd = (a) => a.reduce((x, o) => x + usdOf(o), 0), sumPips = (a) => a.reduce((x, o) => x + netPips(o), 0);
-  const wins = closed.filter((o) => usdOf(o) > 0).length;
-  const doubt = closed.filter((o) => o.doubt), sure = closed.filter((o) => !o.doubt);
-  const hyp = [...S.allDecisions.values()].filter((o) => o.status === "closed");
-  const avgP = (a) => fmtPips(sumPips(a) / a.length);
-  const rows = [["trades", closed.length], ["winrate", closed.length ? Math.round(100 * wins / closed.length) + "%" : "—"],
-    ["totaal", closed.length ? fmtUsd(sumUsd(closed)) : "—"], ["totaal pips", closed.length ? fmtPips(sumPips(closed)) : "—"],
-    ["zeker gem.", sure.length ? `${sure.length} · ${avgP(sure)}` : "—"], ["twijfel gem.", doubt.length ? `${doubt.length} · ${avgP(doubt)}` : "—"],
-    ["niet genomen", S.allDecisions.size], ["hyp. gem.", hyp.length ? `${hyp.length} · ${avgP(hyp)}` : "—"]];
-  const st = $("stats"); st.textContent = "";
-  rows.forEach(([k, v]) => { const d = document.createElement("div"); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("span"); b.textContent = v; d.append(a, b); st.appendChild(d); });
-  const j = $("journal"); j.textContent = "";
-  const mine = [...S.allTrades.values(), ...S.allDecisions.values()].filter((o) => o.ep === S.ep && o.status === "closed").sort((a, b) => b.exitT - a.exitT);
-  if (!mine.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = S.ep ? "Nog geen afgesloten trades in deze episode." : "Kies een episode om te beginnen."; j.appendChild(e); return; }
-  mine.forEach((o) => { const r = document.createElement("div"); r.className = "j";
-    const a = document.createElement("span"); a.textContent = beLabel(o.fillT ?? o.placedT);
-    const b = document.createElement("span"); b.textContent = (o.dir > 0 ? "L " : "S ") + o.reason + (o.virtual ? " (hyp)" : "") + (o.doubt ? " ?" : "");
-    const c = document.createElement("span"); const u = usdOf(o); c.textContent = fmtPips(netPips(o)) + " " + fmtUsd(u); c.className = u >= 0 ? "pos" : "neg"; r.append(a, b, c); j.appendChild(r); });
+let scope = "ep", jFilter = "all";
+function groupRow(name, list, dim) {
+  const n = list.length;
+  const pips = list.reduce((x, o) => x + netPips(o), 0), usd = list.reduce((x, o) => x + usdOf(o), 0);
+  const win = n ? Math.round(100 * list.filter((o) => netPips(o) > 0).length / n) + "%" : "—";
+  return { name, n, win, pips: n ? fmtPips(pips).replace(" pips", "") : "—", usd: n ? fmtUsd(usd) : "—", dim, sign: usd };
 }
+function cell(tr, txt, cls) { const td = document.createElement("td"); td.textContent = txt; if (cls) td.className = cls; tr.appendChild(td); return td; }
+function head(tbl, cols) { const tr = document.createElement("tr"); cols.forEach((c) => { const th = document.createElement("th"); th.textContent = c; tr.appendChild(th); }); tbl.appendChild(tr); }
+function renderStats() {
+  const inScope = (o) => scope === "all" || o.ep === S.ep;
+  const real = [...S.allTrades.values()].filter((o) => o.status === "closed" && inScope(o));
+  const hyp = [...S.allDecisions.values()].filter((o) => o.status === "closed" && inScope(o));
+  const nSkip = [...S.allDecisions.values()].filter(inScope).length;
+  // kerncijfers: alleen echte trades
+  const usd = real.reduce((x, o) => x + usdOf(o), 0), pips = real.reduce((x, o) => x + netPips(o), 0);
+  const win = real.length ? Math.round(100 * real.filter((o) => netPips(o) > 0).length / real.length) : null;
+  const k = $("kpis"); k.textContent = "";
+  [[real.length ? fmtUsd(usd) : "—", "resultaat", real.length ? (usd >= 0 ? "pos" : "neg") : ""],
+   [real.length ? fmtPips(pips).replace(" pips", "") : "—", "pips", real.length ? (pips >= 0 ? "pos" : "neg") : ""],
+   [win == null ? "—" : win + "%", real.length + " trades", ""]].forEach(([v, lab, cls]) => {
+    const d = document.createElement("div"); d.className = "kpi";
+    const a = document.createElement("span"); a.className = "v " + cls; a.textContent = v;
+    const b = document.createElement("span"); b.className = "k"; b.textContent = lab; d.append(a, b); k.appendChild(d); });
+  // per soort
+  const g = $("groups"); g.textContent = ""; head(g, ["", "aantal", "win", "pips", "$"]);
+  [groupRow("Genomen, zeker", real.filter((o) => !o.doubt)), groupRow("Genomen, twijfel", real.filter((o) => o.doubt)),
+   groupRow("Niet genomen", hyp.filter((o) => o.kind !== "twijfel_niet"), true), groupRow("Twijfel, niet genomen", hyp.filter((o) => o.kind === "twijfel_niet"), true)]
+    .forEach((r) => { const tr = document.createElement("tr"); if (r.dim) tr.className = "dim"; cell(tr, r.name); cell(tr, r.n); cell(tr, r.win);
+      cell(tr, r.pips, r.n ? (r.sign >= 0 ? "pos" : "neg") : ""); cell(tr, r.usd, r.n ? (r.sign >= 0 ? "pos" : "neg") : ""); g.appendChild(tr); });
+  const note = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 5; td.className = "empty";
+  td.textContent = `Niet genomen = hypothetisch, telt niet mee in je resultaat. ${nSkip} bewaard, ${hyp.length} afgelopen.`; note.appendChild(td); g.appendChild(note);
+  // journaal
+  const j = $("journal"); j.textContent = "";
+  let rows = [...real, ...hyp];
+  if (jFilter === "real") rows = real; else if (jFilter === "hyp") rows = hyp;
+  rows.sort((a, b) => b.exitT - a.exitT);
+  if (!rows.length) { const tr = document.createElement("tr"); const t = document.createElement("td"); t.className = "empty"; t.textContent = S.ep ? "Nog niets afgesloten." : "Kies een episode om te beginnen."; tr.appendChild(t); j.appendChild(tr); return; }
+  head(j, ["moment", "", "uit", "pips", "$"]);
+  rows.forEach((o) => { const tr = document.createElement("tr"); const p = netPips(o), u = usdOf(o);
+    const first = cell(tr, beLabel(o.fillT ?? o.placedT));
+    if (o.virtual) { const t = document.createElement("span"); t.className = "tag hyp"; t.textContent = "hyp"; first.appendChild(t); }
+    if (o.doubt) { const t = document.createElement("span"); t.className = "tag dbt"; t.textContent = "twijfel"; first.appendChild(t); }
+    cell(tr, o.dir > 0 ? "L" : "S", o.dir > 0 ? "pos" : "neg"); cell(tr, o.reason);
+    cell(tr, fmtPips(p).replace(" pips", ""), p >= 0 ? "pos" : "neg"); cell(tr, fmtUsd(u), u >= 0 ? "pos" : "neg");
+    if (o.why) tr.title = o.why; j.appendChild(tr); });
+}
+document.querySelectorAll("#scopeSeg button").forEach((b) => b.addEventListener("click", () => { scope = b.dataset.scope;
+  document.querySelectorAll("#scopeSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderStats(); }));
+document.querySelectorAll("#jSeg button").forEach((b) => b.addEventListener("click", () => { jFilter = b.dataset.f;
+  document.querySelectorAll("#jSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderStats(); }));
 
 // ---------------- episodes ----------------
 let mkt = "EURUSD";
