@@ -1,5 +1,10 @@
 # KATSU — spec: dashboard met bouwstenen (12 okt 2026)
 
+> **Besluit Gitchi, 12 okt 2026 (v2):** het dashboard toont **alleen 2025 – 9 okt 2026** (zonder zijn 6 screenshotdagen),
+> niets ervoor. Daarmee is 2025–2026 vanaf nu **verkenningsdata** (werkregel 7 aangepast). Bewijs voor een bevroren
+> combinatie komt van de **even maanden 2020–2024** (nooit bekeken) en daarna van een demo. §1 en de split
+> "vóór 2020 / 2020–24" hieronder gelden voor v1 (verkenningshelft) en blijven als script-optie bestaan.
+
 Doel: Gitchi kan bouwstenen (setups en filters) vrij combineren en ziet meteen hoe die combinatie het deed op de
 **verkenningsdata**. Het dashboard is om ideeën te **zoeken**; bewijs komt alleen van de **bevestigingshelft**
 (even maanden 2020–2024, nooit bekeken), en daarna van een demo.
@@ -67,7 +72,19 @@ curve (cumulatieve R), per jaar, vóór 2020 vs 2020–24, en een uitsplitsing "
   Poort: n ≥ 100, gem. netto ≥ +0,10R, t ≥ 2,0, positief in 2020–22 én 2023–24.
 - 2025–2026 wordt niet gebruikt.
 
-## 8. Publicatie en controle (12 okt 2026)
+## 8. v2: lotgrootte en één trade tegelijk (12 okt 2026)
+- **Eenheid:** $ bij vast lot per pair (standaard EURUSD 0,10 · GBPUSD 0,10 · goud 0,02; in te stellen, onthouden in
+  de browser) of R. $ = netto pips × 10 $ × lot; zonder kosten en placebo: R × SL-afstand in pips × 10 $ × lot.
+- **Eén trade tegelijk per markt** (standaard aan, benadering): op volgorde van vulling telt een trade alleen als de
+  vorige in dezelfde markt gesloten is. Zonder dit vinkje tellen alle overlappende setups (totalen dan onrealistisch).
+- Kerncijfers erbij: totaal over de periode en grootste daling (top tot dal). Oordeel: positief in **elk jaar**
+  (2025 en 2026, elk ≥ 20 trades). Grafiek per maand i.p.v. per jaar. Pogingenteller opnieuw vanaf 0
+  (`teller/pogingen_2025`), omdat het nieuwe data is.
+- Rekenregels in Python: `katsu/dashboard_calc.py` (tests `tests/test_dashboard_calc.py`); de pagina geeft exact
+  dezelfde cijfers (alles, $ één tegelijk: 5 000 trades, −1,99 $ per trade, totaal −9 943 $, t −3,81).
+- Data: `python -m scripts.dashboard_build <htf> <uit> 2025` → `dashboard_events_2025.pkl`.
+
+## 9. Publicatie en controle v1 (12 okt 2026)
 Pagina `dashboard/page.html`; data met `python -m scripts.dashboard_build` → `dashboard_events.pkl`, daarna
 `python -m scripts.dashboard_export <pkl> <map>/data` (base64 gzip-JSON per markt). Gepubliceerd als artifact
 "KATSU Bouwstenen" met db-opslag: `teller/pogingen` (bekeken combinaties) en `bevroren/<id>` (max. 3).

@@ -13,7 +13,8 @@ Eigenaar: Gitchi. Communiceer in het Nederlands. Gitchi kan code niet zelf contr
 4. Realistische fills: alleen gesloten candles, entry op een prijs die echt bestond, spread (met minimum) + commissie + slippage, SL/TP gecontroleerd op M1-high/low, bij twijfel binnen één M1-candle telt SL. Nooit data van een ander instrument als fallback.
 5. Verificatie: de eerste 20 live/demo-trades lijn per lijn vergelijken met MT5. Onder 90% overeenkomst: niets verder bouwen.
 6. Alles in R, vast risico per trade (1%), dagstop −2R.
-7. Testplan ligt vooraf vast. Out-of-sample (2025–2026) wordt maar één keer bekeken, nadat de spec bevroren is.
+7. Testplan ligt vooraf vast. Out-of-sample wordt maar één keer bekeken, nadat de spec bevroren is.
+   Besluit Gitchi 12 okt 2026: 2025–2026 is nu verkenningsdata (dashboard). Out-of-sample = even maanden 2020–2024, daarna demo.
 8. Log alles: context, geblokkeerde signalen, echte broker-resultaten.
 9. Elke wijziging komt met tests (`pytest`); alle tests moeten slagen.
 

@@ -9,7 +9,9 @@ from scripts.dashboard_export import MISSING, NUM, ORDER, encode, prepare
 def _row(**kw):
     base = {c: v[0] for c, v in ORDER.items()}
     base.update({"r_net": 1.234, "r_free": 1.5, "r_placebo": -1.0, "r_placebo_free": -0.9, "pips": 12.34,
-                 "jaar": 2018, "week": 2500, "t_sig": pd.Timestamp("2018-03-05 10:15"), "risk_plan": 0.0010})
+                 "risk_pips": 10.0, "risk_pips_free": 9.9, "jaar": 2018, "week": 2500,
+                 "t_sig": pd.Timestamp("2018-03-05 10:15"), "fill_time": pd.Timestamp("2018-03-05 10:45"),
+                 "exit_time": pd.Timestamp("2018-03-05 13:00"), "risk_plan": 0.0010})
     base.update(kw)
     return base
 
@@ -27,12 +29,14 @@ def test_codes_en_schaal_terug_te_lezen():
     assert np.allclose(np.array(c["r_net"]) / NUM["r_net"], [1.234, -1.0], atol=5e-4)
     # tijd in minuten sinds 1970
     assert c["ts"][0] == int(pd.Timestamp("2018-03-05 10:15").value // 60_000_000_000)
+    assert c["exit_time"][0] - c["fill_time"][0] == 135          # 10:45 → 13:00
+    assert c["risk_pips"] == [100, 100]
 
 
 def test_ontbrekend_wordt_missing():
-    df = pd.DataFrame([_row(r_net=np.nan, r_placebo=np.nan)])
+    df = pd.DataFrame([_row(r_net=np.nan, r_placebo=np.nan, exit_time=pd.NaT)])
     c = encode(df)["cols"]
-    assert c["r_net"] == [MISSING] and c["r_placebo"] == [MISSING]
+    assert c["r_net"] == [MISSING] and c["r_placebo"] == [MISSING] and c["exit_time"] == [MISSING]
 
 
 def test_onbekende_waarde_geeft_fout():

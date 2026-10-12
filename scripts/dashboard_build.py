@@ -1,7 +1,9 @@
 """
 Bouwt de data voor het bouwstenen-dashboard (docs/dashboard_spec.md): alle setups op de verkenningsdata met
 kenmerken, uitkomst met echte kosten, zonder kosten, en een vergelijkingstrade (placebo).
-Gebruik: python -m scripts.dashboard_build <htf-map> <uitmap>
+Gebruik: python -m scripts.dashboard_build <htf-map> <uitmap> [verkenning|2025]
+  verkenning = verkenningshelft (vóór 2020 + oneven maanden 2020–24)
+  2025       = 1 jan 2025 t/m einde data (besluit Gitchi 12 okt 2026; zonder zijn screenshotdagen)
 """
 import os
 import sys
@@ -16,6 +18,7 @@ from katsu.dashboard_events import build_events, features
 from katsu.execution import M1, OrderPlan, simulate
 from katsu.structure import atr
 from scripts.gfvg_test import INS
+from scripts.eindtest_gfvg import final_mask, load_full
 from scripts.ronde1 import load
 
 PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "XAUUSD": 0.1}
@@ -52,19 +55,29 @@ def placebo_plan(d, sym_ins, M, bars, i, risk, tp_dist, atr_i, mkt):
                      market=mkt, tp_price=float(fill + d * tp_dist))
 
 
-def run_market(folder, mkt, rng):
-    bars = load(folder, mkt, "M15")
+def period_data(folder, mkt, period):
+    """Candles en masker (welke candles setups/placebo's mogen leveren) voor een periode."""
+    if period == "verkenning":
+        bars = load(folder, mkt, "M15")
+        return bars, R.explore_mask
+    if period == "2025":
+        return load_full(folder, mkt), final_mask          # vanaf 2023 voor opwarming, signalen vanaf 2025
+    raise ValueError(period)
+
+
+def run_market(folder, mkt, rng, period="verkenning"):
+    bars, mask = period_data(folder, mkt, period)
     a = atr(bars, 14).to_numpy()
     h1 = R.htf_trend(bars, "15min", "1h"); h4 = R.htf_trend(bars, "15min", "4h"); d1 = R.htf_trend(bars, "15min", "1D")
     ev = build_events(bars)
-    ev = ev[R.explore_mask(bars.index[ev.s.to_numpy(int)]) & np.isfinite(a[ev.s.to_numpy(int)])].reset_index(drop=True)
+    ev = ev[mask(bars.index[ev.s.to_numpy(int)]) & np.isfinite(a[ev.s.to_numpy(int)])].reset_index(drop=True)
     ev["atr"] = a[ev.s.to_numpy(int)]
     ev = features(bars, ev, a, h1, h4, d1, PIP[mkt])
     ins = replace(INS[mkt], min_sl_atr=0.0)
     insf = free(ins)
     M, Mf = M1(bars, ins), M1(bars, insf)
     # kandidaten voor de placebo: candles van de verkenningsdata, per uur:kwartier
-    ok = R.explore_mask(bars.index) & np.isfinite(a)
+    ok = mask(bars.index) & np.isfinite(a)
     slot = (bars.index.hour * 60 + bars.index.minute).to_numpy()
     pool = {k: np.nonzero(ok & (slot == k))[0] for k in np.unique(slot)}
     rows = []
@@ -76,11 +89,13 @@ def run_market(folder, mkt, rng):
                "pips": (tr.r_net * tr.risk / PIP[mkt]) if tr.status == "gesloten" else np.nan,
                "duur_min": ((tr.exit_time - tr.entry_time).total_seconds() / 60) if tr.status == "gesloten" else np.nan,
                "kosten_r": ((ins.min_spread + 2 * ins.slip + ins.commission) / tr.risk) if tr.risk and tr.risk > 0 else np.nan,
-               "fill_time": tr.entry_time}
+               "fill_time": tr.entry_time, "exit_time": tr.exit_time if tr.status == "gesloten" else pd.NaT,
+               "risk_pips": (tr.risk / PIP[mkt]) if tr.status == "gesloten" else np.nan,
+               "risk_pips_free": (trf.risk / PIP[mkt]) if trf.status == "gesloten" and trf.risk else np.nan}
         if tr.status == "gesloten":
             cand = pool[int(slot[int(r.s)])]
             i = int(cand[rng.integers(len(cand))])
-            while abs(i - int(r.s)) < 96 * 5 or i + 1 >= len(bars):
+            while abs(i - int(r.s)) < 96 * 5 or i + 1 >= len(bars):  # niet binnen 5 dagen van de echte setup
                 i = int(cand[rng.integers(len(cand))])
             tp_dist = abs(tr.tp - tr.fill)
             pt = simulate(placebo_plan(int(r.d), ins, M, bars, i, tr.risk, tp_dist, a[i], mkt), M, ins)
@@ -103,19 +118,19 @@ def run_market(folder, mkt, rng):
     return out
 
 
-def main(folder, outdir):
+def main(folder, outdir, period="verkenning"):
     os.makedirs(outdir, exist_ok=True)
     rng = np.random.default_rng(20261012)
     allm = []
     for mkt in ("EURUSD", "GBPUSD", "XAUUSD"):
         t0 = time.time()
-        df = run_market(folder, mkt, rng)
+        df = run_market(folder, mkt, rng, period)
         allm.append(df)
         g = df[df.status == "gesloten"]
         print(f"{mkt}: setups {len(df)}, gevuld {len(g)}, gem R {g.r_net.mean():+.3f}, zonder kosten {g.r_free.mean():+.3f}, "
               f"placebo {g.r_placebo.mean():+.3f}, placebo zonder kosten {g.r_placebo_free.mean():+.3f} ({time.time() - t0:.0f}s)", flush=True)
-    pd.concat(allm, ignore_index=True).to_pickle(os.path.join(outdir, "dashboard_events.pkl"))
+    pd.concat(allm, ignore_index=True).to_pickle(os.path.join(outdir, f"dashboard_events_{period}.pkl"))
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    main(*sys.argv[1:4])

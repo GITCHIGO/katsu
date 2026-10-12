@@ -1,7 +1,7 @@
 """
 Zet de dashboard-data om naar compacte bestanden voor de pagina (één per markt, base64 van gzip-JSON).
 Kolomgewijs: elke categorie als codes + woordenlijst, getallen als gehele getallen (R × 1000, pips × 10).
-Gebruik: python -m scripts.dashboard_export <dashboard_events.pkl> <uitmap>
+Gebruik: python -m scripts.dashboard_export <dashboard_events_<periode>.pkl> <uitmap>
 """
 import base64
 import gzip
@@ -31,7 +31,8 @@ ORDER = {
     "nfp_dag": ["ja", "nee"], "vulling": ["gevuld", "TP eerst (geannuleerd)", "niet gevuld", "ongeldig"],
     "uitkomst": ["TP", "SL", "MAX_DUUR", "EINDE_DATA", "—"],
 }
-NUM = {"r_net": 1000, "r_free": 1000, "r_placebo": 1000, "r_placebo_free": 1000, "pips": 10}
+NUM = {"r_net": 1000, "r_free": 1000, "r_placebo": 1000, "r_placebo_free": 1000, "pips": 10,
+       "risk_pips": 10, "risk_pips_free": 10}
 MISSING = -2147483648
 
 
@@ -59,15 +60,31 @@ def encode(df):
         cols[c] = np.where(np.isfinite(v), np.rint(v * sc), MISSING).astype(np.int64).tolist()
     cols["jaar"] = df["jaar"].astype(int).tolist()
     cols["week"] = df["week"].astype(int).tolist()
-    cols["ts"] = (df["t_sig"].values.astype("datetime64[m]").astype(np.int64)).tolist()
+    cols["ts"] = _minutes(df["t_sig"])
+    for c in ("fill_time", "exit_time"):                      # minuten sinds 1970; ontbrekend = MISSING
+        cols[c] = _minutes(df[c]) if c in df else [MISSING] * len(df)
     return {"n": len(df), "order": ORDER, "scale": NUM, "missing": MISSING, "cols": cols}
+
+
+def _minutes(s):
+    t = pd.to_datetime(s)
+    v = t.values.astype("datetime64[m]").astype(np.int64)
+    return np.where(t.isna().to_numpy(), MISSING, v).astype(np.int64).tolist()
+
+
+def period_meta(df):
+    """Periodegegevens voor de pagina: label en de jaren (om 'positief in elk jaar' te tonen)."""
+    years = sorted(int(y) for y in df["jaar"].unique())
+    return {"label": f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0]), "jaren": years}
 
 
 def main(pkl, outdir):
     os.makedirs(outdir, exist_ok=True)
     df = prepare(pd.read_pickle(pkl))
+    meta = period_meta(df)
     for m in ORDER["markt"]:
-        body = encode(df[df.markt == m].sort_values("t_sig"))
+        body = encode(df[df.markt == m].sort_values("t_sig", kind="stable"))
+        body["periode"] = meta
         blob = base64.b64encode(gzip.compress(json.dumps(body, separators=(",", ":")).encode(), 9)).decode()
         with open(os.path.join(outdir, f"{m}.txt"), "w") as fh:
             fh.write(blob)
