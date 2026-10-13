@@ -109,3 +109,15 @@ def test_bevestiging_na_venster_telt_niet():
 def test_dagfilter():
     df = _day(BULL)
     assert amd_setups(df, day_mask=lambda t: np.zeros(len(t), bool)) == []
+
+
+def test_amd_dag_label():
+    from katsu.amd import amd_day_labels, amd_day_map
+    df = _day(BULL)
+    m = amd_day_map(amd_setups(df, confirm="open"), df)      # long, bekend om 08:45
+    assert m == {DAY: (1, DAY + pd.Timedelta("08:45:00"))}
+    t = pd.DatetimeIndex([DAY + pd.Timedelta("08:30:00"), DAY + pd.Timedelta("08:45:00"), DAY + pd.Timedelta("14:00:00"),
+                          DAY + pd.Timedelta("14:00:00"), DAY + pd.Timedelta("1 days 09:00:00"), DAY])
+    d = np.array([1, 1, 1, -1, 1, 1])
+    # te vroeg · net bekend · later mee · later tegen · volgende dag · signaal om 00:00 hoort bij de dag ervoor
+    assert list(amd_day_labels(t, d, m)) == ["geen", "mee", "mee", "tegen", "geen", "geen"]

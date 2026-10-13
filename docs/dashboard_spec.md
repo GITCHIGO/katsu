@@ -106,3 +106,17 @@ Pagina `dashboard/page.html`; data met `python -m scripts.dashboard_build` → `
 Controle: de pagina geeft exact dezelfde cijfers als Python op `dashboard_events.pkl`
 (alles: 179 996 gevulde trades, −0,200R, zonder kosten −0,062R, placebo zonder kosten −0,021R;
 FVG + BOS: 5 917 trades, −0,228R).
+
+## 11. AMD in het dashboard (13 okt 2026, wens Gitchi)
+- **Soort "AMD"** (spec v0.6), 4 versies als filter "AMD-versie": C1/C2 (terug in range / terug over de midnight open)
+  × E1/E2 (markt / FVG 38,2%). Geen bias in de setup: gebruik de filter Trend D1. **Eigen uitstap:** TP = overkant
+  van de Azië-range (geen plafond), SL voorbij het manipulatie-extreem, sluiten op de dagclose (NY 17:00).
+  Kenmerken die niet bestaan voor AMD staan op "n.v.t." (breuk, sweep swing, order block, FVG-nummer) of "onbekend"
+  (displacement, candle 3; gat × ATR alleen bij E2). Geplande RR "≥2" (bij FVG/IFVG betekent dat precies 2).
+- **Kenmerk "AMD-dag"** op alle setups: was er eerder die serverdag (op of vóór het signaal) een bevestigde AMD-beweging
+  volgens C2? mee / tegen / geen. AMD-setups zelf: mee.
+- Code: `katsu/amd.py` (`amd_day_map`, `amd_day_labels`, test in `tests/test_amd.py`), `scripts/dashboard_amd.py`.
+  Export: `python -m scripts.dashboard_export <uit> dashboard_events_verkenning.pkl dashboard_events_2025.pkl
+  dashboard_amd_verkenning.pkl dashboard_amd_2025.pkl`.
+- Gecontroleerd tegen Python (alle periodes, alle trades): AMD C2-E1 5 179 trades −0,169R; met D1 mee 1 521 −0,116R;
+  FVG met AMD-dag mee 23 014 −0,207R, tegen 21 119 −0,193R, geen 71 404 −0,222R.

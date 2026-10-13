@@ -16,10 +16,11 @@ import pandas as pd
 from scripts.gfvg_test import INS
 
 ORDER = {
-    "markt": ["EURUSD", "GBPUSD", "XAUUSD"], "soort": ["FVG", "IFVG"], "richting": ["long", "short"],
-    "breuk": ["geen", "BOS", "CHoCH", "breuk uit neutraal"], "sweep_swing": ["ja", "nee"],
+    "markt": ["EURUSD", "GBPUSD", "XAUUSD"], "soort": ["FVG", "IFVG", "AMD"], "richting": ["long", "short"],
+    "amd_variant": ["C1-E1", "C1-E2", "C2-E1", "C2-E2", "n.v.t."], "amd_dag": ["mee", "tegen", "geen"],
+    "breuk": ["geen", "BOS", "CHoCH", "breuk uit neutraal", "n.v.t."], "sweep_swing": ["ja", "nee", "n.v.t."],
     "sweep_dag": ["ja", "nee", "onbekend"], "sweep_azie": ["ja", "nee", "vóór einde Azië"],
-    "order_block": ["ja", "nee"], "fvg_nummer": ["eerste", "tweede", "derde+"],
+    "order_block": ["ja", "nee", "n.v.t."], "fvg_nummer": ["eerste", "tweede", "derde+", "n.v.t."],
     "trend_m15": ["mee", "tegen", "neutraal"], "trend_h1": ["mee", "tegen", "neutraal"],
     "trend_h4": ["mee", "tegen", "neutraal"], "trend_d1": ["mee", "tegen", "neutraal"],
     "premium_discount": ["mee", "tegen", "onbekend"],
@@ -27,7 +28,7 @@ ORDER = {
     "weekdag": ["ma", "di", "wo", "do", "vr", "za", "zo"], "silver_bullet": ["ja", "nee"],
     "gat_atr": ["<0,25", "0,25–0,5", "0,5–1", "1–2", ">2", "onbekend"],
     "displacement": ["<0,5", "0,5–1", "1–2", ">2", "onbekend"], "candle3_vol": ["<25%", "25–50%", "≥50%", "onbekend"],
-    "sl_atr": ["<1", "1–2", "2–3", ">3", "onbekend"], "rr_plan": ["<1", "1–1,5", "1,5–2", "2", "onbekend"],
+    "sl_atr": ["<1", "1–2", "2–3", ">3", "onbekend"], "rr_plan": ["<1", "1–1,5", "1,5–2", "≥2", "onbekend"],
     "kosten": ["<0,1R", "0,1–0,2R", ">0,2R", "onbekend"], "volatiliteit": ["laag", "normaal", "hoog", "onbekend"],
     "nfp_dag": ["ja", "nee"], "vulling": ["gevuld", "TP eerst (geannuleerd)", "niet gevuld", "ongeldig"],
     "uitkomst": ["TP", "SL", "MAX_DUUR", "EINDE_DATA", "—"],
@@ -41,7 +42,12 @@ def prepare(df):
     df = df.copy()
     df["uur"] = df["uur"].astype(int).astype(str)
     df["vulling"] = df["vulling"].where(df["vulling"].isin(ORDER["vulling"]), "ongeldig")
-    df["uitkomst"] = df["uitkomst"].fillna("—")
+    df["uitkomst"] = df["uitkomst"].fillna("—").replace({"EINDE_DAG": "MAX_DUUR"})
+    df["rr_plan"] = df["rr_plan"].replace({"2": "≥2"})              # FVG: precies 2 (plafond); AMD: 2 of meer
+    for c, v in (("amd_variant", "n.v.t."), ("amd_dag", "geen")):
+        if c not in df:
+            df[c] = v
+        df[c] = df[c].fillna(v)
     cost = {m: (INS[m].min_spread + 2 * INS[m].slip + INS[m].commission) for m in ORDER["markt"]}
     kr = df["markt"].map(cost) / df["risk_plan"].where(df["risk_plan"] > 0)
     df["kosten"] = np.where(kr.isna(), "onbekend", np.where(kr < 0.1, "<0,1R", np.where(kr < 0.2, "0,1–0,2R", ">0,2R")))

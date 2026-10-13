@@ -120,6 +120,26 @@ def amd_setups(bars: pd.DataFrame, confirm: str = "open", entry: str = "market",
     return out
 
 
+def amd_day_map(setups: list[AmdSetup], bars: pd.DataFrame) -> dict:
+    """Per serverdag: (richting +1/−1, moment waarop de bevestiging bekend is = einde bevestigingscandle)."""
+    return {s.day: (1 if s.direction == "LONG" else -1, bars.index[s.k_conf] + STEP) for s in setups}
+
+
+def amd_day_labels(t_sig: pd.DatetimeIndex, d: np.ndarray, day_map: dict) -> np.ndarray:
+    """
+    Kenmerk 'AMD-dag' voor andere setups: was er op dezelfde serverdag vóór (of op) het signaal al een bevestigde
+    AMD-beweging? 'mee' (zelfde richting), 'tegen', of 'geen'. Signaal = einde van de signaalcandle.
+    """
+    t_sig = pd.DatetimeIndex(t_sig)
+    day = (t_sig - pd.Timedelta(minutes=1)).normalize()
+    out = np.full(len(t_sig), "geen", dtype=object)
+    for i, (dy, t) in enumerate(zip(day, t_sig)):
+        v = day_map.get(dy)
+        if v is not None and v[1] <= t:
+            out[i] = "mee" if v[0] == d[i] else "tegen"
+    return out
+
+
 def make_amd_plan(s: AmdSetup, bars: pd.DataFrame, atr_values: np.ndarray, market: str) -> OrderPlan:
     t_sig = bars.index[s.k_conf] + STEP                       # einde van de bevestigingscandle
     a = float(atr_values[s.k_conf])
