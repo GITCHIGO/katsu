@@ -121,8 +121,9 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 4p
 const $ = (id) => document.getElementById(id);
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const GROUPS = [
-  ["Basis", [["markt", "Markt"], ["soort", "Soort setup"], ["amd_variant", "AMD-versie (C1 terug in range · C2 terug over de open · E1 markt · E2 FVG)"], ["richting", "Richting"]]],
-  ["Structuur", [["amd_dag", "AMD-dag: eerder die dag AMD bevestigd (C2)"], ["breuk", "Breuk (BOS/CHoCH)"], ["sweep_swing", "Sweep swing vooraf"], ["sweep_dag", "Sweep low/high gisteren"],
+  ["Basis", [["markt", "Markt"], ["soort", "Soort setup"], ["amd_variant", "AMD-versie (C1 terug in range · C2 terug over de open · E1 markt · E2 FVG)"],
+    ["zone_tf", "Zone-timeframe"], ["zone_entry", "Zone-instap (rand of 38,2% diep)"], ["richting", "Richting"]]],
+  ["Structuur", [["amd_dag", "AMD-dag: eerder die dag AMD bevestigd (C2)"], ["zone_fvg", "Zone: FVG in het vertrek"], ["breuk", "Breuk (BOS/CHoCH)"], ["sweep_swing", "Sweep swing vooraf"], ["sweep_dag", "Sweep low/high gisteren"],
     ["sweep_azie", "Sweep Azië-range"], ["order_block", "Order block"], ["fvg_nummer", "Hoeveelste FVG"]]],
   ["Trend", [["trend_m15", "Trend M15"], ["trend_h1", "Trend H1"], ["trend_h4", "Trend H4"], ["trend_d1", "Trend D1"], ["premium_discount", "Premium/discount"]]],
   ["Tijd (Belgisch)", [["sessie", "Sessie"], ["uur", "Uur"], ["weekdag", "Weekdag"], ["silver_bullet", "Silver Bullet-venster"], ["nfp_dag", "NFP-dag"]]],
@@ -538,7 +539,7 @@ async function initDb() {
   loadSettings(); wireSettings();
   try { await Promise.all([loadAll(), initDb()]); }
   catch (e) { $("body").textContent = ""; const d = document.createElement("div"); d.className = "loading"; d.textContent = "Data laden mislukt: " + e.message; $("body").appendChild(d); return; }
-  $("periodNote").textContent = `data t/m ${PERIOD.einde} · M15 · EURUSD, GBPUSD, goud (goud vanaf 2016) · FVG/IFVG: jouw uitstap (38,2% · SL onder OB · TP oude high max 2R) · AMD: TP overkant Azië-range, sluiten op de dagclose`;
+  $("periodNote").textContent = `data t/m ${PERIOD.einde} · M15 · EURUSD, GBPUSD, goud (goud vanaf 2016) · FVG/IFVG: jouw uitstap (38,2% · SL onder OB · TP oude high max 2R) · AMD: TP overkant Azië-range, sluiten op de dagclose · Zone: limiet 7 dagen, TP oude high vóór de vulling max 2R`;
   wirePeriod();
   renderFilters(); renderTop(); update();
   let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(update, 150); });

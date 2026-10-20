@@ -120,3 +120,16 @@ FVG + BOS: 5 917 trades, −0,228R).
   dashboard_amd_verkenning.pkl dashboard_amd_2025.pkl`.
 - Gecontroleerd tegen Python (alle periodes, alle trades): AMD C2-E1 5 179 trades −0,169R; met D1 mee 1 521 −0,116R;
   FVG met AMD-dag mee 23 014 −0,207R, tegen 21 119 −0,193R, geen 71 404 −0,222R.
+
+## 12. Zones in het dashboard (20 okt 2026, wens Gitchi)
+- **Soort "Zone"** = spec v0.7b (supply/demand-zone = order block na een vertrek ≥ 2 × ATR met BOS; limietorder 7 dagen,
+  geen annulering; SL voorbij de zone; TP = oude high vlak vóór de vulling, max 2R; max. looptijd 14 dagen).
+  Filters: **Zone-timeframe** (M15/H1/H4), **Zone-instap** (rand / 38,2% diep), **Zone: FVG in het vertrek** (ja/nee).
+  Andere soorten staan daar op "n.v.t.". Order block = "ja"; breuk, sweep swing, FVG-nummer = "n.v.t.";
+  gat/displacement/candle 3 = "onbekend". SL (× ATR) en geplande RR gebruiken de ATR en het vertrekbeen van de
+  zone-timeframe; trends, sessie, sweeps, volatiliteit en AMD-dag op de laatste gesloten M15-candle.
+- Uitvoering op **M15** (zoals de andere soorten); de aparte zones-test liep voor EURUSD en goud op M1 — kleine
+  verschillen zijn normaal (H1 rand + D1 mee: 305 trades −0,021R hier, 306 trades −0,003R op M1).
+- Beide periodes (verkenning en 2025–26), zodat "buiten je periode" werkt.
+- Code: `scripts/dashboard_zones.py`. Export: zes pkl's (events, amd, zones × verkenning/2025).
+- Gecontroleerd tegen Python: Zone H1 rand D1 mee 2025–26, één tegelijk: 305 trades, −0,021R.

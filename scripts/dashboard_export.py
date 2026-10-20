@@ -16,7 +16,8 @@ import pandas as pd
 from scripts.gfvg_test import INS
 
 ORDER = {
-    "markt": ["EURUSD", "GBPUSD", "XAUUSD"], "soort": ["FVG", "IFVG", "AMD"], "richting": ["long", "short"],
+    "markt": ["EURUSD", "GBPUSD", "XAUUSD"], "soort": ["FVG", "IFVG", "AMD", "Zone"],
+    "zone_tf": ["M15", "H1", "H4", "n.v.t."], "zone_entry": ["rand", "38,2", "n.v.t."], "zone_fvg": ["ja", "nee", "n.v.t."], "richting": ["long", "short"],
     "amd_variant": ["C1-E1", "C1-E2", "C2-E1", "C2-E2", "n.v.t."], "amd_dag": ["mee", "tegen", "geen"],
     "breuk": ["geen", "BOS", "CHoCH", "breuk uit neutraal", "n.v.t."], "sweep_swing": ["ja", "nee", "n.v.t."],
     "sweep_dag": ["ja", "nee", "onbekend"], "sweep_azie": ["ja", "nee", "vóór einde Azië"],
@@ -44,7 +45,8 @@ def prepare(df):
     df["vulling"] = df["vulling"].where(df["vulling"].isin(ORDER["vulling"]), "ongeldig")
     df["uitkomst"] = df["uitkomst"].fillna("—").replace({"EINDE_DAG": "MAX_DUUR"})
     df["rr_plan"] = df["rr_plan"].replace({"2": "≥2"})              # FVG: precies 2 (plafond); AMD: 2 of meer
-    for c, v in (("amd_variant", "n.v.t."), ("amd_dag", "geen")):
+    for c, v in (("amd_variant", "n.v.t."), ("amd_dag", "geen"), ("zone_tf", "n.v.t."), ("zone_entry", "n.v.t."),
+                 ("zone_fvg", "n.v.t.")):
         if c not in df:
             df[c] = v
         df[c] = df[c].fillna(v)
