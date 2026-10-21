@@ -66,7 +66,11 @@ def main(cfg_path: str, discord: bool = False) -> int:
         print(f"        bewaard: {os.path.join(p['bars'], f'{m}_M15_live.pkl')}")
     if discord:
         print()
-        line(Discord(cfg.webhook).send("🧪 KATSU Live: testbericht. Als je dit ziet, werkt Discord."), "testbericht naar Discord")
+        d = Discord(cfg.webhook)
+        line(d.send("🧪 KATSU Live: testbericht. Als je dit ziet, werkt Discord."),
+             "testbericht naar Discord" + (f" — {d.last_error}" if d.last_error else ""))
+        w = cfg.webhook.strip()
+        print(f"        webhook in config: {len(w)} tekens, begint met {w[:40]!r}, eindigt op …{w[-4:]!r}")
     b.shutdown()
     print("\nALLES OK" if ok else "\nEr zijn FOUTEN — los die eerst op (zie hierboven).")
     return 0 if ok else 1
