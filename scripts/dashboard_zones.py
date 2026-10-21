@@ -16,8 +16,8 @@ from katsu.amd import amd_day_labels, amd_day_map, amd_setups
 from katsu.dashboard_events import bin_label, day_context, nfp_day, rel_trend, session_label
 from katsu.execution import M1
 from katsu.structure import atr, find_swings, trend_series
-from katsu.zones import find_zones, zone_entry
-from scripts.dashboard_build import BASE_MARKETS, EXTRA_MARKETS, INS, PIP, free, placebo_plan
+from katsu.zones import find_zones, make_zone_plan_b, zone_entry
+from scripts.dashboard_build import BASE_MARKETS, EXTRA_MARKETS, INS, PIP, free, placebo_plan, plan_cols
 from scripts.dashboard_amd import PERIODS
 from scripts.zones_test import TFS, resample, sim_b
 from katsu.execution import simulate
@@ -93,7 +93,9 @@ def zone_rows(m15, mkt, mask, rng):
                             "risk_pips": tr.risk / PIP[mkt] if g else np.nan,
                             "risk_pips_free": trf.risk / PIP[mkt] if trf.status == "gesloten" and trf.risk else np.nan,
                             "r_placebo": np.nan, "r_placebo_free": np.nan,
-                        "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price})
+                        "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price,
+                        **plan_cols(make_zone_plan_b(z, bars, entry, mkt, rule)), "plan_tp_mode": "zone_bij_vulling",
+                        "plan_leg_high": z.leg_high, "plan_max_rr": 2.0})
                 if g:
                     kf = int(m15.index.searchsorted(tr.entry_time, side="right") - 1)
                     cand = pool.get(int(slot[kf]), np.array([], int))
@@ -106,6 +108,8 @@ def zone_rows(m15, mkt, mask, rng):
                         row["r_placebo"] = pt.r_net if pt.status == "gesloten" else np.nan
                         row["r_placebo_free"] = pf.r_net if pf.status == "gesloten" else np.nan
                 rows.append(row)
+    if not rows:                                       # geen setups in het venster (KATSU Live: vaak)
+        return pd.DataFrame()
     out = pd.DataFrame(rows)
     lab = {"gesloten": "gevuld", "niet_gevuld": "niet gevuld", "geannuleerd": "TP eerst (geannuleerd)"}
     out["vulling"] = out.status.map(lambda x: lab.get(x, x))

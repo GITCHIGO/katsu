@@ -36,31 +36,47 @@ def stop_status(n, mean):
     return "loopt"
 
 
-def build_rows(folder, start, end):
-    t0, t1 = pd.Timestamp(start), (pd.Timestamp(end) if end else None)
-    mask = lambda t: np.asarray((t >= t0) & ((t < t1) if t1 is not None else True))
-    rng = np.random.default_rng(20261021)
+def needed_kinds():
+    """Welke soorten (FVG/AMD/Zone) per markt nodig zijn voor de vastgelegde setups."""
     need = {}
     for name, p in PRESETS.items():
         for m in p["markt"]:
             need.setdefault(m, set()).add(p["f"]["soort"][0])
     for m in INFO_MARKETS:
         need.setdefault(m, set()).add("FVG")
+    return need
+
+
+def rows_for(bars_by_market, mask, rng):
+    """Alle setups met kenmerken en orderplan, voor candles die al in het geheugen zitten. Gedeeld door de
+    vooruit-test en KATSU Live (werkregel 3: zelfde code). mask(DatetimeIndex) -> bool: welke signalen meetellen."""
     parts = []
-    for mkt, kinds in need.items():
-        try:
-            bars = load_full(folder, mkt)
-        except (IndexError, FileNotFoundError):
-            print(f"{mkt}: geen data in {folder}, overgeslagen"); continue
+    for mkt, kinds in needed_kinds().items():
+        bars = bars_by_market.get(mkt)
+        if bars is None:
+            print(f"{mkt}: geen data, overgeslagen"); continue
         if "FVG" in kinds:
-            parts.append(DB.run_market(folder, mkt, rng, mask))
+            parts.append(DB.run_market(None, mkt, rng, mask, bars=bars))
         if "AMD" in kinds:
             parts.append(amd_rows(bars, mkt, mask, rng))
         if "Zone" in kinds:
             parts.append(zone_rows(bars, mkt, mask, rng))
-    df = prepare(pd.concat(parts, ignore_index=True))
-    df["data_einde"] = df["markt"].map({m: load_full(folder, m).index[-1] for m in df["markt"].unique()})
+    df = prepare(pd.concat([p for p in parts if len(p)], ignore_index=True)) if any(len(p) for p in parts) else pd.DataFrame()
+    if len(df):
+        df["data_einde"] = df["markt"].map({m: b.index[-1] for m, b in bars_by_market.items()})
     return df
+
+
+def build_rows(folder, start, end):
+    t0, t1 = pd.Timestamp(start), (pd.Timestamp(end) if end else None)
+    mask = lambda t: np.asarray((t >= t0) & ((t < t1) if t1 is not None else True))
+    bars = {}
+    for mkt in needed_kinds():
+        try:
+            bars[mkt] = load_full(folder, mkt)
+        except (IndexError, FileNotFoundError):
+            print(f"{mkt}: geen data in {folder}, overgeslagen")
+    return rows_for(bars, mask, np.random.default_rng(20261021))
 
 
 def setup_trades(df, name, markets=None):

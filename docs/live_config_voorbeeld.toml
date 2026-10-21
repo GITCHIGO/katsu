@@ -1,0 +1,25 @@
+# KATSU Live — instellingen. Kopieer naar C:\katsu\config.toml en vul in.
+# DIT BESTAND (met jouw gegevens) NOOIT IN GIT ZETTEN: er staan wachtwoorden en je webhook in.
+
+[mt5]
+# Pad naar terminal64.exe van IC Markets (laat leeg als er maar één MT5 op de VPS staat)
+terminal = 'C:\Program Files\MetaTrader 5 IC Markets (SC)\terminal64.exe'
+login = 12345678                 # nummer van je KATSU-demoaccount
+password = "jouw-mt5-wachtwoord"
+server = "ICMarketsSC-Demo"
+allow_live = false               # blijft false: KATSU weigert een echt account
+
+[katsu]
+mode = "loggen"                  # eerste week "loggen" (geen orders); daarna "orders"
+data_dir = 'C:\katsu\data'
+lots = { EURUSD = 0.10, GBPUSD = 0.10, XAUUSD = 0.02 }
+# Symboolnamen bij de broker (alleen aanpassen als ze anders heten, bv. "XAUUSD.a")
+symbols = { EURUSD = "EURUSD", GBPUSD = "GBPUSD", XAUUSD = "XAUUSD" }
+
+[discord]
+webhook = "https://discord.com/api/webhooks/..."
+
+[dashboard]
+password = "minstens-12-tekens-en-uniek"   # niet hetzelfde als een ander wachtwoord (het gaat via http)
+secret = "plak-hier-64-willekeurige-tekens" # maak met: python -c "import secrets; print(secrets.token_hex(32))"
+port = 8080

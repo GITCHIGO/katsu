@@ -119,6 +119,8 @@ def _events_one_side(bars: pd.DataFrame, d: int, L: int = L_STRUCT) -> list[dict
 def build_events(bars: pd.DataFrame, L: int = L_STRUCT) -> pd.DataFrame:
     """Alle setups (beide richtingen) met hun ruwe kenmerken; gesorteerd op signaalcandle."""
     ev = pd.DataFrame(_events_one_side(bars, 1, L) + _events_one_side(bars, -1, L))
+    if ev.empty:                                       # geen enkele setup (korte of vlakke data, KATSU Live)
+        return pd.DataFrame(columns=["s", "d"])
     return ev.sort_values(["s", "d"]).reset_index(drop=True)
 
 

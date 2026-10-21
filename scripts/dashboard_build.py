@@ -79,12 +79,25 @@ def period_data(folder, mkt, period):
     raise ValueError(period)
 
 
-def run_market(folder, mkt, rng, period="verkenning"):
-    bars, mask = period_data(folder, mkt, period)
+def plan_cols(p, valid_bars=None):
+    """Het orderplan zelf in de rij (voor KATSU Live: zelfde plan als de backtest). Verandert geen uitkomst."""
+    return {"plan_kind": p.kind, "plan_richting": p.direction, "plan_signal_time": p.signal_time,
+            "plan_anchor": p.anchor, "plan_atr": p.atr, "plan_limit": p.limit_price, "plan_valid_until": p.valid_until,
+            "plan_valid_bars": valid_bars, "plan_tp": p.tp_price, "plan_cancel": p.cancel_price, "plan_max_rr": p.max_rr}
+
+
+def run_market(folder, mkt, rng, period="verkenning", bars=None):
+    """bars: candles rechtstreeks meegeven (KATSU Live); dan moet period een masker-functie zijn."""
+    if bars is None:
+        bars, mask = period_data(folder, mkt, period)
+    else:
+        mask = period
     a = atr(bars, 14).to_numpy()
     h1 = R.htf_trend(bars, "15min", "1h"); h4 = R.htf_trend(bars, "15min", "4h"); d1 = R.htf_trend(bars, "15min", "1D")
     ev = build_events(bars)
     ev = ev[mask(bars.index[ev.s.to_numpy(int)]) & np.isfinite(a[ev.s.to_numpy(int)])].reset_index(drop=True)
+    if len(ev) == 0:                                   # geen setups in het venster (KATSU Live: vaak)
+        return pd.DataFrame()
     ev["atr"] = a[ev.s.to_numpy(int)]
     ev = features(bars, ev, a, h1, h4, d1, PIP[mkt])
     ins = replace(INS[mkt], min_sl_atr=0.0)
@@ -106,7 +119,8 @@ def run_market(folder, mkt, rng, period="verkenning"):
                "fill_time": tr.entry_time, "exit_time": tr.exit_time if tr.status == "gesloten" else pd.NaT,
                "risk_pips": (tr.risk / PIP[mkt]) if tr.status == "gesloten" else np.nan,
                "risk_pips_free": (trf.risk / PIP[mkt]) if trf.status == "gesloten" and trf.risk else np.nan,
-               "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price}
+               "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price,
+               **plan_cols(p, VALID_BARS)}
         cand = pool.get(int(slot[int(r.s)]), np.array([], int)) if tr.status == "gesloten" else None
         # placebo alleen als er een kandidaat bestaat buiten 5 dagen van de echte setup (bij US500 zijn sommige
         # kwartieren bijna leeg; zonder deze controle bleef de lus eindeloos zoeken). Zelfde loting als vroeger.

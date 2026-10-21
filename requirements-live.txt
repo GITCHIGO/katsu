@@ -1,0 +1,6 @@
+# KATSU Live op de Windows-VPS (Python 3.11 of nieuwer)
+MetaTrader5>=5.0.45
+pandas>=2.0
+numpy>=1.24
+flask>=3.0
+tzdata>=2024.1

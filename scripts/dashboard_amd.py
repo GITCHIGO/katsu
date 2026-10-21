@@ -18,7 +18,7 @@ from katsu.amd import amd_day_labels, amd_day_map, amd_setups, make_amd_plan
 from katsu.dashboard_events import bin_label, day_context, nfp_day, rel_trend, session_label
 from katsu.execution import M1, simulate
 from katsu.structure import atr, find_swings, trend_series
-from scripts.dashboard_build import BASE_MARKETS, EXTRA_MARKETS, INS, PIP, free, placebo_plan
+from scripts.dashboard_build import BASE_MARKETS, EXTRA_MARKETS, INS, PIP, free, placebo_plan, plan_cols
 from scripts.eindtest_gfvg import final_mask, load_full
 from scripts.ronde1 import load
 
@@ -82,7 +82,8 @@ def amd_rows(bars, mkt, mask, rng):
                         "risk_pips": tr.risk / PIP[mkt] if g else np.nan,
                         "risk_pips_free": trf.risk / PIP[mkt] if trf.status == "gesloten" and trf.risk else np.nan,
                         "r_placebo": np.nan, "r_placebo_free": np.nan,
-                        "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price})
+                        "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price,
+                        **plan_cols(p), "plan_close_eod": True})
             if g:
                 cand = pool.get(int(slot[k]), np.array([], int))
                 cand = cand[(np.abs(cand - k) >= 96 * 5) & (cand + 1 < len(bars))]
@@ -94,6 +95,8 @@ def amd_rows(bars, mkt, mask, rng):
                     row["r_placebo"] = pt.r_net if pt.status == "gesloten" else np.nan
                     row["r_placebo_free"] = pf.r_net if pf.status == "gesloten" else np.nan
             rows.append(row)
+    if not rows:                                       # geen setups in het venster (KATSU Live: vaak)
+        return pd.DataFrame()
     out = pd.DataFrame(rows)
     lab = {"gesloten": "gevuld", "niet_gevuld": "niet gevuld", "geannuleerd": "TP eerst (geannuleerd)"}
     out["vulling"] = out.status.map(lambda x: lab.get(x, x))
