@@ -21,7 +21,7 @@ from scripts.eindtest_gfvg import load_full
 
 START = "2026-10-10"
 LOTS = {"EURUSD": 0.10, "GBPUSD": 0.10, "XAUUSD": 0.02, "XAGUSD": 0.02, "US500": 1.0}
-INFO_MARKETS = ("XAGUSD", "US500")               # test #1 ter info op markten waar hij niet op gekozen is
+INFO_MARKETS = ()                                 # zilver en US500 niet gebruiken (besluit Gitchi 21 okt 2026)
 DIGITS = {"EURUSD": 5, "GBPUSD": 5, "XAUUSD": 2, "XAGUSD": 3, "US500": 2}
 
 
@@ -91,12 +91,16 @@ def summary(tr):
             "winst_R": float(c.r_net[w].sum()), "verlies_R": float(c.r_net[~w].sum())}
 
 
+def alle_leeg(df):
+    return df.iloc[0:0].assign(setup="", loopt=False)
+
+
 def report(df, start, end, label):
     setups = {name: setup_trades(df, name) for name in PRESETS}
-    info = setup_trades(df, "Test #1 (FVG)", list(INFO_MARKETS))
+    info = setup_trades(df, "Test #1 (FVG)", list(INFO_MARKETS)) if INFO_MARKETS else alle_leeg(df)
     alle = pd.concat(setups.values(), ignore_index=True)
     rep = {"label": label, "start": str(start), "einde": str(end or df["data_einde"].max()),
-           "lots": LOTS, "algemeen": summary(alle), "setups": {}, "info_test1_extra_markten": {}}
+           "lots": {m: LOTS[m] for m in ("EURUSD", "GBPUSD", "XAUUSD")}, "algemeen": summary(alle), "setups": {}, "info_test1_extra_markten": {}}
     for name, tr in setups.items():
         s = summary(tr)
         s["stopregel"] = stop_status(s["trades"], s["gem_R"] if s["gem_R"] is not None else 0)

@@ -111,7 +111,7 @@ td.note {{ font-family:var(--ui); text-align:left; white-space:normal; min-width
   <div class="kpis">{kpis}</div>
   <section><h2>Per setup</h2>{table(HEAD + ["stopregel"], setups)}</section>
   <section><h2>Per setup en pair</h2>{table(HEAD, pairs)}</section>
-  <section><h2>Ter info: test #1 op zilver en US500</h2><p class="note">Niet gekozen op deze markten; telt niet mee in het totaal.</p>{table(HEAD, info)}</section>
+  {f'<section><h2>Ter info: test #1 op andere markten</h2><p class="note">Telt niet mee in het totaal.</p>{table(HEAD, info)}</section>' if info else ''}
   <section><h2>Alle trades</h2><p class="note">Vergelijk lijn per lijn met je demo-trades (werkregel 5). "loopt nog" = nog niet gesloten op het einde van de data; telt nog niet mee.</p>
   {table(["vulling", "setup", "pair", "richting", "entry", "SL", "TP", "uit", "uitprijs", "uitkomst", "R", "pips", "$"], tr)}</section>
   <p class="note">Stopregels per setup: na 20 trades gemiddeld onder −0,3R → stoppen · na 40 trades onder 0 → stoppen · pas na ±150 trades boven +0,10R echt geld overwegen. Eén maand zegt weinig: kijk vooral naar grote afwijkingen.</p>

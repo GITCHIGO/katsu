@@ -10,7 +10,7 @@ Wijzigen = nieuwe planversie en de teller van die setup begint opnieuw.
 | **Test #1 (FVG)** | EURUSD, GBPUSD, XAUUSD | FVG · sweep gisteren nee · FVG eerste/derde+ · M15 tegen · H1 tegen/neutraal · Azië/Londen/overlap · ma–vr · geen NFP · volatiliteit hoog | 38,2% in het gat, SL onder OB, TP oude high max 2R, max. 14 dagen |
 | **AMD-extra (#386)** | EURUSD, XAUUSD | AMD C1-E2/C2-E1 · sweep gisteren ja · D1 mee/neutraal · kosten < 0,1R | TP overkant Azië-range, SL voorbij manipulatie, sluiten op de dagclose |
 | **Zone GBPUSD** | GBPUSD | Zone M15/H4 · instap rand · sweep gisteren ja · Azië-sweep ja · M15 en H4 tegen/neutraal · D1 mee/neutraal · geen nacht | limiet 7 dagen, SL onder de zone, TP oude high vóór de vulling max 2R |
-Ter info (telt niet mee): test #1 ook op XAGUSD en US500.
+Zilver (XAGUSD) en US500 worden niet gebruikt (besluit Gitchi 21 okt 2026).
 Per setup per markt één trade tegelijk. Uitvoering op M15 (zoals het dashboard), alle kosten.
 
 ## 2. Wat er gemeten wordt
@@ -20,7 +20,7 @@ trades (vultijd, entry, SL, TP, uitstap, R, pips, $) om lijn per lijn met de dem
 Trades die op het einde van de data nog lopen, tellen pas mee als ze gesloten zijn.
 
 ## 3. Werkwijze (elke maand, of wanneer Gitchi wil)
-1. Gitchi exporteert in MT5 de **M15**-candles van EURUSD, GBPUSD, XAUUSD (en ter info XAGUSD, US500) vanaf
+1. Gitchi exporteert in MT5 de **M15**-candles van EURUSD, GBPUSD en XAUUSD vanaf
    1 sep 2026 tot nu (tab-gescheiden; de marktnaam in de bestandsnaam) en stuurt ze door.
 2. `python -m scripts.vooruit_data <htf> <vooruitmap> <csv's>` — samenvoegen en controleren.
 3. `python -m scripts.vooruittest <vooruitmap> <uit> 2026-10-10` → JSON; `python -m scripts.vooruit_rapport` → pagina
