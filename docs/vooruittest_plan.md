@@ -39,3 +39,6 @@ afwijkingen tellen. Elke setup wordt **apart** beoordeeld.
 ## 6. Proefrun
 Om het rapport te tonen: september 2026 (oude data, telt niet): 22 trades, winrate 50%, +0,08R gemiddeld.
 Komt overeen met het dashboard (verschil = Gitchi's 6 screenshotdagen, die het dashboard voor 2025–26 weglaat).
+Uitgebreide proefrun juni – 9 okt 2026 (wens Gitchi, oude data, telt niet): 52 trades, winrate 56%, +0,20R gemiddeld,
+winst +$675,71 (29) · verlies −$423,43 (23) · netto +$252,28. Test #1 33 trades +0,22R · AMD 8 trades +0,49R ·
+Zone GBPUSD 11 trades −0,05R. Het rapport toont nu ook totale winst en totaal verlies (algemeen, per setup, per pair).

@@ -27,3 +27,14 @@ def test_stopregels():
     assert stop_status(25, -0.2) == "loopt"
     assert stop_status(40, -0.01).startswith("STOP")
     assert stop_status(150, 0.12).startswith("kandidaat")
+
+
+def test_samenvatting_winst_en_verlies():
+    from scripts.vooruittest import summary
+    tr = pd.DataFrame({"markt": ["EURUSD"] * 3, "r_net": [1.5, -1.0, -1.1], "pips": [15.0, -10.0, -11.0],
+                       "week": [1, 1, 2], "loopt": [False, False, False]})
+    s = summary(tr)
+    # 0,10 lot EURUSD = 1 $ per pip: winst 15 $, verlies −21 $, netto −6 $
+    assert (s["winst"], s["verlies"]) == (1, 2)
+    assert s["winst_usd"] == pytest.approx(15.0) and s["verlies_usd"] == pytest.approx(-21.0) and s["usd"] == pytest.approx(-6.0)
+    assert s["winst_R"] == pytest.approx(1.5) and s["verlies_R"] == pytest.approx(-2.1)

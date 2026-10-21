@@ -76,7 +76,8 @@ def summary(tr):
     n = len(c)
     if n == 0:
         return {"trades": 0, "winst": 0, "verlies": 0, "winrate": None, "gem_R": None, "totaal_R": 0.0,
-                "gem_win_R": None, "gem_verlies_R": None, "pips": 0.0, "usd": 0.0, "t": None, "lopend": int(tr.loopt.sum())}
+                "gem_win_R": None, "gem_verlies_R": None, "pips": 0.0, "usd": 0.0, "t": None, "lopend": int(tr.loopt.sum()),
+                "winst_usd": 0.0, "verlies_usd": 0.0, "winst_R": 0.0, "verlies_R": 0.0}
     w = c.r_net > 0
     v = usd(c, LOTS)
     return {"trades": n, "winst": int(w.sum()), "verlies": int((~w).sum()), "winrate": float(w.mean()),
@@ -85,7 +86,9 @@ def summary(tr):
             "gem_verlies_R": float(c.r_net[~w].mean()) if (~w).any() else None,
             "pips": float(c.pips.sum()), "usd": float(v.sum()),
             "t": float(clustered_t(c.r_net.to_numpy(), c.week.to_numpy())) if n > 2 else None,
-            "lopend": int(tr.loopt.sum())}
+            "lopend": int(tr.loopt.sum()),
+            "winst_usd": float(v[w].sum()), "verlies_usd": float(v[~w].sum()),
+            "winst_R": float(c.r_net[w].sum()), "verlies_R": float(c.r_net[~w].sum())}
 
 
 def report(df, start, end, label):

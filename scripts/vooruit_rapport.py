@@ -35,13 +35,14 @@ def summary_cells(name, s, extra=None):
     cells = [(name, ""), (s["trades"], ""), (f'{s["winst"]}/{s["verlies"]}', ""), (fPct(s["winrate"]), ""),
              (fR(s["gem_R"]), cls(s["gem_R"])), (fR(s["gem_win_R"]), "pos" if s["gem_win_R"] else ""),
              (fR(s["gem_verlies_R"]), "neg" if s["gem_verlies_R"] else ""), (fR(s["totaal_R"], 1), cls(s["totaal_R"])),
-             (f'{s["pips"]:+.1f}', cls(s["pips"])), (fUSD(s["usd"]), cls(s["usd"])), (s["lopend"], "")]
+             (f'{s["pips"]:+.1f}', cls(s["pips"])), (fUSD(s.get("winst_usd")), "pos"), (fUSD(s.get("verlies_usd")), "neg"),
+             (fUSD(s["usd"]), cls(s["usd"])), (s["lopend"], "")]
     if extra is not None:
         cells.append((extra, "note"))
     return cells
 
 
-HEAD = ["", "trades", "W/V", "winrate", "gem.", "gem. winnaar", "gem. verliezer", "totaal", "pips", "$", "lopend"]
+HEAD = ["", "trades", "W/V", "winrate", "gem.", "gem. winnaar", "gem. verliezer", "totaal", "pips", "winst $", "verlies $", "netto $", "lopend"]
 
 
 def table(head, rows):
@@ -56,7 +57,9 @@ def render(rep):
     kpi = lambda v, k, c="": f'<div class="kpi"><span class="v {c}">{html.escape(str(v))}</span><span class="k">{k}</span></div>'
     kpis = "".join([kpi(a["trades"], "trades (gesloten)"), kpi(fPct(a["winrate"]), "winrate"),
                     kpi(fR(a["gem_R"]), "gem. per trade", cls(a["gem_R"])), kpi(fR(a["totaal_R"], 1), "totaal", cls(a["totaal_R"])),
-                    kpi(fUSD(a["usd"]), "totaal $ bij jouw lots", cls(a["usd"])), kpi(a["lopend"], "lopen nog")])
+                    kpi(fUSD(a.get("winst_usd")), f'totale winst ({a["winst"]} trades)', "pos"),
+                    kpi(fUSD(a.get("verlies_usd")), f'totaal verlies ({a["verlies"]} trades)', "neg"),
+                    kpi(fUSD(a["usd"]), "netto $ bij jouw lots", cls(a["usd"])), kpi(a["lopend"], "lopen nog")])
     setups = [row(summary_cells(n, s, s["stopregel"])) for n, s in rep["setups"].items()]
     pairs = []
     for n, s in rep["setups"].items():
