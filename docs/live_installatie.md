@@ -21,9 +21,10 @@ Loopt iets anders dan hier staat: stop, maak een screenshot en stuur hem door.
 python --version
 git --version
 ```
-- Python moet **3.11 of nieuwer** zijn. Zo niet: installeer Python 3.12 (64-bit) van python.org en vink
-  **Add python.exe to PATH** aan.
-- Git ontbreekt? Installeer "Git for Windows" (standaardopties).
+- Python moet **3.11 of nieuwer** zijn (3.14 is getest en werkt). Zo niet: installeer Python van python.org (64-bit)
+  en vink **Add python.exe to PATH** aan.
+- Git ontbreekt? Download **Git for Windows** op https://git-scm.com/download/win ("64-bit Git for Windows Setup"),
+  installeer met alle standaardopties, **sluit PowerShell en open hem opnieuw**, en controleer met `git --version`.
 
 ## 3. Code ophalen
 ```
