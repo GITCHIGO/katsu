@@ -63,7 +63,10 @@ th { text-align: right; font-weight: 500; color: var(--muted); font-size: 12px; 
 td { text-align: right; padding: 5px 6px; font-family: var(--mono); border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
 th:first-child, td:first-child { text-align: left; font-family: var(--ui); }
 tr.best td:first-child::after { content: " ★"; color: var(--accent); }
-.tablewrap { overflow-x: auto; }
+.tablewrap { overflow-x: auto; max-width: 100%; }
+#body > * { min-width: 0; }
+#bdSel { max-width: 100%; min-width: 0; }
+.card { grid-template-columns: minmax(0, 1fr); }
 select { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
 .freeze { display: grid; gap: 8px; }
 .freeze input { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; }
@@ -73,10 +76,33 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 4p
 .frozen div { border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; background: var(--panel-2); }
 .loading { padding: 40px; text-align: center; color: var(--muted); }
 .explain { color: var(--muted); font-size: 12px; max-width: 80ch; margin: 0; }
+.quick { display: grid; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.quick .rowq { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.quick .lab { font-size: 12px; color: var(--muted); min-width: 64px; }
+.preset { border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 5px 10px; font-size: 13px; }
+.preset[aria-pressed="true"] { background: var(--accent); color: #241603; font-weight: 600; }
+.fbtn, .fclose { display: none; }
 @media (max-width: 900px) {
+  body { font-size: 15px; }
+  .top { padding: 8px 12px; gap: 6px 10px; }
+  #periodNote, #dbState { display: none; }
+  .fbtn { display: inline-block; border: 1px solid var(--accent); background: transparent; color: var(--accent); border-radius: 6px; padding: 6px 12px; font-weight: 600; }
   .wrap { grid-template-columns: 1fr; }
-  .filters { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+  .filters { display: none; position: fixed; inset: 0; z-index: 20; max-height: none; border: 0; padding: 12px 16px 80px; overflow-y: auto; }
+  body.showFilters .filters { display: grid; }
+  body.showFilters { overflow: hidden; }
+  .fclose { display: block; position: sticky; top: 0; z-index: 1; width: 100%; border: 0; border-radius: 6px; padding: 10px; font-weight: 600; background: var(--accent); color: #241603; }
+  .main { padding: 12px; gap: 12px; }
+  #quick { order: 1; } #body { order: 2; } #active { order: 3; } #settings { order: 4; } #periodBar { order: 5; }
+  .chip { padding: 5px 12px; font-size: 14px; }
+  .chips { gap: 6px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi .v { font-size: 18px; }
   .row2 { grid-template-columns: 1fr; }
+  .settings { gap: 8px 14px; }
+  .settings input[type=number] { width: 64px; }
+  .verdict { font-size: 13px; }
+  td, th { padding: 5px 4px; font-size: 12px; }
 }
 </style>
 
@@ -84,6 +110,7 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 4p
   <span class="brand">KATSU BOUWSTENEN</span>
   <span class="note" id="periodNote">M15 · EURUSD, GBPUSD, goud · jouw uitstap (38,2% · SL onder OB · TP oude high max 2R)</span>
   <span class="spacer"></span>
+  <button class="fbtn" id="fBtn" aria-controls="filters">Filters</button>
   <span class="pill" id="tries" title="Hoeveel verschillende filtercombinaties je al bekeken hebt">pogingen: —</span>
   <span class="pill" id="frozenCount" title="Combinaties die op de bevestigingshelft getest worden">bevroren: —/3</span>
   <span class="note" id="dbState">opslag: verbinden…</span>
@@ -96,9 +123,7 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 4p
       <span class="seg" role="group" aria-label="Eenheid">
         <button id="uUsd" aria-pressed="true">$ bij lot</button><button id="uR" aria-pressed="false">R</button>
       </span>
-      <label>EURUSD lot <input type="number" id="lotEURUSD" min="0.01" step="0.01" value="0.10"></label>
-      <label>GBPUSD lot <input type="number" id="lotGBPUSD" min="0.01" step="0.01" value="0.10"></label>
-      <label>Goud lot <input type="number" id="lotXAUUSD" min="0.01" step="0.01" value="0.02"></label>
+      <span id="lots" style="display:contents"></span>
       <label title="Benadering: per markt pas een nieuwe trade als de vorige gesloten is (op volgorde van vulling)."><input type="checkbox" id="oneAt" checked> één trade tegelijk per markt</label>
     </div>
     <div class="settings" id="periodBar">
@@ -109,6 +134,7 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 4p
       </span>
       <span class="note">Even maanden 2020–2024 zitten er bewust niet in: die blijven schoon voor de bevestiging.</span>
     </div>
+    <div class="quick" id="quick"></div>
     <div class="active" id="active"></div>
     <div id="body"><div class="loading">Data laden…</div></div>
   </main>
@@ -132,9 +158,23 @@ const GROUPS = [
 ];
 const FEATS = GROUPS.flatMap((g) => g[1].map((f) => f[0]));
 const LABEL = Object.fromEntries(GROUPS.flatMap((g) => g[1]));
-const MARKETS = ["EURUSD", "GBPUSD", "XAUUSD"];
-const DEFAULT_LOT = { EURUSD: 0.10, GBPUSD: 0.10, XAUUSD: 0.02 };
-const USD_PER_PIP_PER_LOT = 10;            // EURUSD, GBPUSD en goud (pip = 0,1 $): 10 $ per pip per lot
+const MARKETS = ["EURUSD", "GBPUSD", "XAUUSD", "XAGUSD", "US500"];
+const SHORT = { EURUSD: "EUR", GBPUSD: "GBP", XAUUSD: "goud", XAGUSD: "zilver", US500: "US500" };
+const DEFAULT_LOT = { EURUSD: 0.10, GBPUSD: 0.10, XAUUSD: 0.02, XAGUSD: 0.02, US500: 1.00 };
+// $ per pip (punt) per lot: FX 10 $; goud pip 0,1 $ × 100 oz; zilver pip 0,01 $ × 5 000 oz; US500 1 punt × 1 (controleer in MT5)
+const USD_PER_PIP = { EURUSD: 10, GBPUSD: 10, XAUUSD: 10, XAGUSD: 50, US500: 1 };
+// Presets = de bevroren/opgeslagen combinaties; markten mag je daarna zelf aan/uit zetten.
+const PRESETS = [
+  { naam: "Test #1 (FVG)", markt: ["EURUSD", "GBPUSD", "XAUUSD"], f: { soort: ["FVG"], sweep_dag: ["nee", "onbekend"],
+    fvg_nummer: ["eerste", "derde+"], trend_m15: ["tegen"], trend_h1: ["tegen", "neutraal"], sessie: ["Azië", "Londen", "overlap"],
+    weekdag: ["ma", "di", "wo", "do", "vr"], nfp_dag: ["nee"], volatiliteit: ["hoog", "onbekend"] } },
+  { naam: "AMD-extra (#386)", markt: ["EURUSD", "XAUUSD"], f: { soort: ["AMD"], amd_variant: ["C1-E2", "C2-E1"],
+    sweep_dag: ["ja", "onbekend"], trend_d1: ["mee", "neutraal"], kosten: ["<0,1R", "onbekend"] } },
+  { naam: "Zone GBPUSD", markt: ["GBPUSD"], f: { soort: ["Zone"], zone_tf: ["M15", "H4", "n.v.t."], zone_entry: ["rand", "n.v.t."],
+    sweep_dag: ["ja", "onbekend"], sweep_azie: ["ja"], trend_m15: ["tegen", "neutraal"], trend_h4: ["tegen", "neutraal"],
+    trend_d1: ["mee", "neutraal"], sessie: ["Azië", "Londen", "overlap", "New York"] } },
+];
+let activePreset = null;
 const MAX_FROZEN = 3;
 const TRY_DOC = "teller/pogingen_2025";
 let D = null, ORDER = null, MISSING = -2147483648, PERIOD = { label: "", jaren: [] };
@@ -171,6 +211,9 @@ function loadSettings() {
 }
 function saveSettings() { try { localStorage.setItem("katsuDashSettings", JSON.stringify(set)); } catch (e) {} }
 function wireSettings() {
+  const box = $("lots"); box.textContent = "";
+  MARKETS.forEach((m) => { const l = document.createElement("label"); l.append(SHORT[m] + " lot ");
+    const i = document.createElement("input"); i.type = "number"; i.id = "lot" + m; i.min = "0.01"; i.step = "0.01"; l.appendChild(i); box.appendChild(l); });
   const paint = () => { $("uUsd").setAttribute("aria-pressed", String(set.unit === "usd")); $("uR").setAttribute("aria-pressed", String(set.unit === "r"));
     MARKETS.forEach((m) => { $("lot" + m).value = set.lot[m].toFixed(2); $("lot" + m).disabled = set.unit !== "usd"; }); $("oneAt").checked = set.oneAt; };
   $("uUsd").addEventListener("click", () => { set.unit = "usd"; paint(); saveSettings(); update(); });
@@ -216,17 +259,18 @@ async function loadAll() {
 }
 
 // ---------------- waarde per trade in de gekozen eenheid ----------------
-// R: zoals gesimuleerd. $: R × SL-afstand in pips × 10 $ × lot (vast lot, zoals jij handelt).
+// R: zoals gesimuleerd. $: R × SL-afstand in pips × ($ per pip per lot) × lot (vast lot, zoals jij handelt).
 const RISK_OF = { r_net: "risk_pips", r_free: "risk_pips_free", r_placebo: "risk_pips", r_placebo_free: "risk_pips_free" };
 function val(col, i) {
   const C = D.cols, S = D.scale;
   if (C[col][i] === MISSING) return NaN;
   const r = C[col][i] / S[col];
   if (set.unit === "r") return r;
-  if (col === "r_net" && C.pips[i] !== MISSING) return C.pips[i] / S.pips * USD_PER_PIP_PER_LOT * set.lot[MARKETS[C.markt[i]]];
+  const mk = MARKETS[C.markt[i]], k = USD_PER_PIP[mk] * set.lot[mk];
+  if (col === "r_net" && C.pips[i] !== MISSING) return C.pips[i] / S.pips * k;
   const rk = C[RISK_OF[col]][i];
   if (rk === MISSING) return NaN;
-  return r * (rk / S[RISK_OF[col]]) * USD_PER_PIP_PER_LOT * set.lot[MARKETS[C.markt[i]]];
+  return r * (rk / S[RISK_OF[col]]) * k;
 }
 
 // ---------------- statistiek ----------------
@@ -244,7 +288,7 @@ function select(except, outside) {        // outside = true: dezelfde filters, m
 }
 // gevulde trades; met "één tegelijk" per markt pas een nieuwe als de vorige gesloten is (rows staan op vulvolgorde)
 function filledOf(rows) {
-  const C = D.cols, last = [-Infinity, -Infinity, -Infinity], out = [];
+  const C = D.cols, last = MARKETS.map(() => -Infinity), out = [];
   for (const i of rows) {
     if (C.vulling[i] !== 0 || C.r_net[i] === MISSING) continue;
     if (set.oneAt) { const m = C.markt[i]; if (C.fill_time[i] < last[m]) continue; last[m] = C.exit_time[i] !== MISSING ? C.exit_time[i] : C.fill_time[i]; }
@@ -291,13 +335,57 @@ const fT = (x) => (isFinite(x) ? x.toFixed(2).replace("-", "−") : "—");
 const cls = (x) => (isFinite(x) ? (x >= 0 ? "pos" : "neg") : "");
 
 // ---------------- filters ----------------
+function toggle(f, code, only) {
+  if (only) { allowed[f].fill(0); allowed[f][code] = 1; }
+  else { allowed[f][code] = allowed[f][code] ? 0 : 1; if (!allowed[f].some((x) => x)) allowed[f].fill(1); }
+  activePreset = null; renderFilters(); update();
+}
+function wireChip(b, f, code) {
+  let timer = null, long = false;
+  b.addEventListener("pointerdown", () => { long = false; timer = setTimeout(() => { long = true; toggle(f, code, true); }, 550); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => b.addEventListener(ev, () => clearTimeout(timer)));
+  b.addEventListener("contextmenu", (e) => e.preventDefault());
+  b.addEventListener("click", (e) => { if (long) { long = false; return; } toggle(f, code, e.altKey); });
+}
+function applyPreset(p) {
+  FEATS.forEach((f) => allowed[f].fill(1));
+  Object.entries(p.f).forEach(([f, vals]) => { allowed[f].fill(0); vals.forEach((v) => { const c = ORDER[f].indexOf(v); if (c >= 0) allowed[f][c] = 1; }); });
+  allowed.markt.fill(0); p.markt.forEach((m) => (allowed.markt[MARKETS.indexOf(m)] = 1));
+  set.from = "2025-01"; set.to = PERIOD.maanden[PERIOD.maanden.length - 1]; set.oneAt = true;
+  $("oneAt").checked = true; $("pFrom").value = set.from; $("pTo").value = set.to; saveSettings();
+  activePreset = p.naam; renderFilters(); update();
+}
+function renderQuick() {
+  const q = $("quick"); q.textContent = "";
+  const r1 = document.createElement("div"); r1.className = "rowq";
+  const l1 = document.createElement("span"); l1.className = "lab"; l1.textContent = "Presets"; r1.appendChild(l1);
+  PRESETS.forEach((p) => { const b = document.createElement("button"); b.className = "preset"; b.textContent = p.naam;
+    b.setAttribute("aria-pressed", String(activePreset === p.naam)); b.addEventListener("click", () => applyPreset(p)); r1.appendChild(b); });
+  const r2 = document.createElement("div"); r2.className = "rowq";
+  const l2 = document.createElement("span"); l2.className = "lab"; l2.textContent = "Markten"; r2.appendChild(l2);
+  MARKETS.forEach((m, code) => { const b = document.createElement("button"); b.className = "chip"; b.textContent = SHORT[m];
+    b.setAttribute("aria-pressed", String(!!allowed.markt[code])); b.title = "Tik: aan/uit · lang drukken: alleen deze";
+    let timer = null, long = false;
+    b.addEventListener("pointerdown", () => { long = false; timer = setTimeout(() => { long = true; allowed.markt.fill(0); allowed.markt[code] = 1; renderFilters(); update(); }, 550); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => b.addEventListener(ev, () => clearTimeout(timer)));
+    b.addEventListener("contextmenu", (e) => e.preventDefault());
+    b.addEventListener("click", (e) => { if (long) { long = false; return; }
+      if (e.altKey) { allowed.markt.fill(0); allowed.markt[code] = 1; } else { allowed.markt[code] = allowed.markt[code] ? 0 : 1; if (!allowed.markt.some((x) => x)) allowed.markt.fill(1); }
+      renderFilters(); update(); });
+    r2.appendChild(b); });
+  const n = document.createElement("span"); n.className = "note"; n.textContent = activePreset ? `${activePreset} actief · markten mag je vrij aan/uit zetten` : "Kies een preset of stel zelf filters in";
+  r2.appendChild(n);
+  q.append(r1, r2);
+}
 function renderFilters() {
   const box = $("filters"); box.textContent = "";
+  const close = document.createElement("button"); close.className = "fclose"; close.textContent = "Toon resultaat";
+  close.addEventListener("click", () => document.body.classList.remove("showFilters")); box.appendChild(close);
   GROUPS.forEach(([gname, feats]) => {
     const g = document.createElement("section"); g.className = "grp";
     const h = document.createElement("h2"); h.textContent = gname;
     const rs = document.createElement("button"); rs.textContent = "alles aan";
-    rs.addEventListener("click", () => { feats.forEach(([f]) => allowed[f].fill(1)); renderFilters(); update(); });
+    rs.addEventListener("click", () => { feats.forEach(([f]) => allowed[f].fill(1)); activePreset = null; renderFilters(); update(); });
     h.appendChild(rs); g.appendChild(h);
     feats.forEach(([f, label]) => {
       const w = document.createElement("div"); w.className = "feat";
@@ -306,12 +394,8 @@ function renderFilters() {
       ORDER[f].forEach((v, code) => {
         if (v === "onbekend") return;
         const b = document.createElement("button"); b.className = "chip"; b.textContent = v; b.setAttribute("aria-pressed", String(!!allowed[f][code]));
-        b.title = "Klik: aan/uit · Alt-klik: alleen deze";
-        b.addEventListener("click", (e) => {
-          if (e.altKey) { allowed[f].fill(0); allowed[f][code] = 1; }
-          else { allowed[f][code] = allowed[f][code] ? 0 : 1; if (!allowed[f].some((x) => x)) allowed[f].fill(1); }
-          renderFilters(); update();
-        });
+        b.title = "Klik/tik: aan/uit · Alt-klik of lang drukken: alleen deze";
+        wireChip(b, f, code);
         chips.appendChild(b);
       });
       w.appendChild(chips); g.appendChild(w);
@@ -332,6 +416,8 @@ function describe() {
 
 // ---------------- weergave ----------------
 function update() {
+  renderQuick();
+  $("fBtn").textContent = `Filters (${activeFeats().length})`;
   const rows = select(null), st = stats(rows);
   const a = $("active"); a.textContent = "";
   describe().forEach((t) => { const s = document.createElement("span"); s.className = "tag"; s.textContent = t; a.appendChild(s); });
@@ -339,8 +425,8 @@ function update() {
   const body = $("body"); body.textContent = "";
   body.style.display = "grid"; body.style.gap = "16px";
   const k = document.createElement("div"); k.className = "kpis";
-  const pipTxt = MARKETS.filter((m) => st.pips[m]).map((m) => `${m.slice(0, 3)} ${fP(st.pips[m][0] / st.pips[m][1])}`).join(" · ");
-  const lotTxt = set.unit === "usd" ? `lot ${MARKETS.map((m) => m.slice(0, 3) + " " + set.lot[m].toFixed(2)).join(" · ")}` : "";
+  const pipTxt = MARKETS.filter((m) => st.pips[m]).map((m) => `${SHORT[m]} ${fP(st.pips[m][0] / st.pips[m][1])}`).join(" · ");
+  const lotTxt = set.unit === "usd" ? `lot ${MARKETS.filter((m) => allowed.markt[MARKETS.indexOf(m)]).map((m) => SHORT[m] + " " + set.lot[m].toFixed(2)).join(" · ")}` : "";
   [[st.n.toLocaleString("nl-BE"), "trades (gevuld)", `${st.setups.toLocaleString("nl-BE")} setups${set.oneAt ? " · één tegelijk per markt" : ""}`, ""],
    [isFinite(st.win) ? Math.round(100 * st.win) + "%" : "—", "winrate", "", ""],
    [fV(st.mean), "gem. per trade, met kosten", pipTxt ? "pips: " + pipTxt : "", cls(st.mean)],
@@ -539,8 +625,9 @@ async function initDb() {
   loadSettings(); wireSettings();
   try { await Promise.all([loadAll(), initDb()]); }
   catch (e) { $("body").textContent = ""; const d = document.createElement("div"); d.className = "loading"; d.textContent = "Data laden mislukt: " + e.message; $("body").appendChild(d); return; }
-  $("periodNote").textContent = `data t/m ${PERIOD.einde} · M15 · EURUSD, GBPUSD, goud (goud vanaf 2016) · FVG/IFVG: jouw uitstap (38,2% · SL onder OB · TP oude high max 2R) · AMD: TP overkant Azië-range, sluiten op de dagclose · Zone: limiet 7 dagen, TP oude high vóór de vulling max 2R`;
+  $("periodNote").textContent = `data t/m ${PERIOD.einde} · M15 · EURUSD, GBPUSD, goud, zilver, US500 (goud, zilver en US500 vanaf 2016) · FVG/IFVG: jouw uitstap (38,2% · SL onder OB · TP oude high max 2R) · AMD: TP overkant Azië-range, sluiten op de dagclose · Zone: limiet 7 dagen, TP oude high vóór de vulling max 2R`;
   wirePeriod();
+  $("fBtn").addEventListener("click", () => document.body.classList.add("showFilters"));
   renderFilters(); renderTop(); update();
   let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(update, 150); });
 })();

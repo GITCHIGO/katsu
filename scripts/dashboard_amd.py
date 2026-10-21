@@ -18,9 +18,8 @@ from katsu.amd import amd_day_labels, amd_day_map, amd_setups, make_amd_plan
 from katsu.dashboard_events import bin_label, day_context, nfp_day, rel_trend, session_label
 from katsu.execution import M1, simulate
 from katsu.structure import atr, find_swings, trend_series
-from scripts.dashboard_build import PIP, free, placebo_plan
+from scripts.dashboard_build import BASE_MARKETS, EXTRA_MARKETS, INS, PIP, free, placebo_plan
 from scripts.eindtest_gfvg import final_mask, load_full
-from scripts.gfvg_test import INS
 from scripts.ronde1 import load
 
 VARIANTS = [("range", "market", "C1-E1"), ("range", "fvg", "C1-E2"), ("open", "market", "C2-E1"), ("open", "fvg", "C2-E2")]
@@ -102,15 +101,15 @@ def amd_rows(bars, mkt, mask, rng):
     return out
 
 
-def main(folder, dash):
+def main(folder, dash, markets=BASE_MARKETS, suffix=""):
     rng = np.random.default_rng(20261013)
     for per, (loader, mask) in PERIODS.items():
-        ev_path = os.path.join(dash, f"dashboard_events_{per}.pkl")
+        ev_path = os.path.join(dash, f"dashboard_events_{per}{suffix}.pkl")
         ev = pd.read_pickle(ev_path)
         ev["amd_variant"] = "n.v.t."
         ev["amd_dag"] = "geen"
         amd = []
-        for mkt in ("EURUSD", "GBPUSD", "XAUUSD"):
+        for mkt in markets:
             bars = loader(folder, mkt)
             m = ev.markt == mkt
             dmap = amd_day_map(amd_setups(bars, "open", "market"), bars)
@@ -119,8 +118,9 @@ def main(folder, dash):
             amd.append(amd_rows(bars, mkt, mask, rng))
             print(per, mkt, "AMD-setups", len(amd[-1]), "| amd_dag:", ev.loc[m, "amd_dag"].value_counts().to_dict(), flush=True)
         ev.to_pickle(ev_path)
-        pd.concat(amd, ignore_index=True).to_pickle(os.path.join(dash, f"dashboard_amd_{per}.pkl"))
+        pd.concat(amd, ignore_index=True).to_pickle(os.path.join(dash, f"dashboard_amd_{per}{suffix}.pkl"))
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    extra = len(sys.argv) > 3 and sys.argv[3] == "extra"
+    main(*sys.argv[1:3], markets=EXTRA_MARKETS if extra else BASE_MARKETS, suffix="_extra" if extra else "")

@@ -1,8 +1,8 @@
 """
 Rekenregels van het bouwstenen-dashboard, in Python (de pagina is een spiegel; tests vergelijken beide).
 
-- Dollars bij vast lot: netto pips × 10 $ × lot (EURUSD, GBPUSD en goud: 10 $ per pip per lot; goud-pip = 0,1 $).
-  Voor varianten zonder pips (zonder kosten, placebo): R × SL-afstand in pips × 10 $ × lot.
+- Dollars bij vast lot: netto pips × ($ per pip per lot) × lot: EURUSD/GBPUSD/goud 10 $, zilver 50 $, US500 1 $.
+  Voor varianten zonder pips (zonder kosten, placebo): R × SL-afstand in pips × ($ per pip per lot) × lot.
 - Eén trade tegelijk per markt (benadering): op volgorde van vulling; een trade telt alleen als de vorige trade in
   dezelfde markt al gesloten is (vultijd ≥ sluittijd van de vorige).
 - t-waarde geclusterd per week: se = √(Σ_week (Σ (x − gemiddelde))²) / n.
@@ -10,15 +10,17 @@ Rekenregels van het bouwstenen-dashboard, in Python (de pagina is een spiegel; t
 import numpy as np
 import pandas as pd
 
-USD_PER_PIP_PER_LOT = 10.0
+USD_PER_PIP_PER_LOT = {"EURUSD": 10.0, "GBPUSD": 10.0, "XAUUSD": 10.0,   # goud: pip 0,1 $ × 100 oz
+                       "XAGUSD": 50.0,                                      # zilver: pip 0,01 $ × 5 000 oz
+                       "US500": 1.0}                                        # US500: 1 punt × 1 (controleer in MT5)
 
 
 def usd(df: pd.DataFrame, lots: dict, col: str = "r_net") -> pd.Series:
-    lot = df["markt"].map(lots).astype(float)
+    lot = df["markt"].map(lots).astype(float) * df["markt"].map(USD_PER_PIP_PER_LOT).astype(float)
     if col == "r_net":
-        return df["pips"] * USD_PER_PIP_PER_LOT * lot
+        return df["pips"] * lot
     risk = df["risk_pips_free"] if col in ("r_free", "r_placebo_free") else df["risk_pips"]
-    return df[col] * risk * USD_PER_PIP_PER_LOT * lot
+    return df[col] * risk * lot
 
 
 def one_at_a_time(df: pd.DataFrame) -> pd.DataFrame:

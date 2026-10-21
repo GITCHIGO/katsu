@@ -133,3 +133,17 @@ FVG + BOS: 5 917 trades, −0,228R).
 - Beide periodes (verkenning en 2025–26), zodat "buiten je periode" werkt.
 - Code: `scripts/dashboard_zones.py`. Export: zes pkl's (events, amd, zones × verkenning/2025).
 - Gecontroleerd tegen Python: Zone H1 rand D1 mee 2025–26, één tegelijk: 305 trades, −0,021R.
+
+## 13. Zilver, US500, presets en gsm-versie (21 okt 2026, wens Gitchi)
+- **Markten erbij: XAGUSD en US500**, met alle soorten (FVG/IFVG, AMD, Zone) en beide periodes (vanaf feb 2016).
+  Kosten zoals in ronde 1 (zilver: min. spread 0,010 · slippage 0,005 · commissie 0,002 · swap 0,005/nacht) en
+  ronde 3 (US500: min. spread 0,30 · slippage 0,25 · swap 3%/jaar). Instrumenten in `scripts/dashboard_build.py`
+  (`EXTRA_INS`); de bestaande markten veranderen niet.
+- **$ per pip per lot:** EURUSD/GBPUSD/goud 10 $, zilver 50 $ (pip 0,01 × 5 000 oz), US500 1 $ per punt (aanname:
+  contract 1; controleren in MT5 → Specificatie). Standaard-lot: zilver 0,02, US500 1,00.
+- **Presets** (knoppen bovenaan): Test #1 (FVG) · AMD-extra (#386) · Zone GBPUSD. Een preset zet alle filters en de
+  oorspronkelijke markten, periode 2025–26 en "één tegelijk"; de markten kun je daarna vrij aan/uit zetten
+  (rij "Markten"). Elke andere combinatie telt zoals altijd als poging.
+- **Gsm:** filters achter de knop "Filters (n)" (volledig scherm, "Toon resultaat" om terug te gaan), grotere knopjes,
+  kerncijfers in 2 kolommen. **Lang drukken** op een knopje = "alleen deze" (op de computer: Alt-klik).
+- Data per markt een eigen bestand (5 bestanden, ±15 MB samen): op gsm het liefst via wifi openen.

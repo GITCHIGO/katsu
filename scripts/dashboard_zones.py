@@ -17,9 +17,8 @@ from katsu.dashboard_events import bin_label, day_context, nfp_day, rel_trend, s
 from katsu.execution import M1
 from katsu.structure import atr, find_swings, trend_series
 from katsu.zones import find_zones, zone_entry
-from scripts.dashboard_build import PIP, free, placebo_plan
+from scripts.dashboard_build import BASE_MARKETS, EXTRA_MARKETS, INS, PIP, free, placebo_plan
 from scripts.dashboard_amd import PERIODS
-from scripts.gfvg_test import INS
 from scripts.zones_test import TFS, resample, sim_b
 from katsu.execution import simulate
 
@@ -114,15 +113,16 @@ def zone_rows(m15, mkt, mask, rng):
     return out
 
 
-def main(folder, dash):
+def main(folder, dash, markets=BASE_MARKETS, suffix=""):
     rng = np.random.default_rng(20261020)
     for per, (loader, mask) in PERIODS.items():
         parts = []
-        for mkt in ("EURUSD", "GBPUSD", "XAUUSD"):
+        for mkt in markets:
             parts.append(zone_rows(loader(folder, mkt), mkt, mask, rng))
             print(per, mkt, "zone-rijen", len(parts[-1]), flush=True)
-        pd.concat(parts, ignore_index=True).to_pickle(os.path.join(dash, f"dashboard_zones_{per}.pkl"))
+        pd.concat(parts, ignore_index=True).to_pickle(os.path.join(dash, f"dashboard_zones_{per}{suffix}.pkl"))
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    extra = len(sys.argv) > 3 and sys.argv[3] == "extra"
+    main(*sys.argv[1:3], markets=EXTRA_MARKETS if extra else BASE_MARKETS, suffix="_extra" if extra else "")

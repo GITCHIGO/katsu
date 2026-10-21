@@ -17,11 +17,22 @@ from katsu import research as R
 from katsu.dashboard_events import build_events, features
 from katsu.execution import M1, OrderPlan, simulate
 from katsu.structure import atr
-from scripts.gfvg_test import INS
+from katsu.execution import Instrument
+from scripts.gfvg_test import INS as _INS_BASE
 from scripts.eindtest_gfvg import final_mask, load_full
 from scripts.ronde1 import load
 
-PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "XAUUSD": 0.1}
+# Extra markten (dashboard §13). Kosten zoals in ronde 1 (zilver) en ronde 3 (US500); max. looptijd 14 dagen.
+EXTRA_INS = {
+    "XAGUSD": Instrument("XAGUSD", tick=0.001, point=0.001, min_spread=0.010, slip=0.005, commission=0.002,
+                         swap=0.005, rollover_min_spread=0.02, max_hold_days=14),
+    "US500": Instrument("US500", tick=0.01, point=0.01, min_spread=0.30, slip=0.25, commission=0.0,
+                        swap_pct_long=0.03, swap_pct_short=0.03, rollover_min_spread=1.0, max_hold_days=14),
+}
+INS = {**_INS_BASE, **EXTRA_INS}
+BASE_MARKETS = ("EURUSD", "GBPUSD", "XAUUSD")
+EXTRA_MARKETS = ("XAGUSD", "US500")
+PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "XAUUSD": 0.1, "XAGUSD": 0.01, "US500": 1.0}
 VALID_BARS = 480
 MAX_RR = 2.0
 
@@ -92,8 +103,10 @@ def run_market(folder, mkt, rng, period="verkenning"):
                "fill_time": tr.entry_time, "exit_time": tr.exit_time if tr.status == "gesloten" else pd.NaT,
                "risk_pips": (tr.risk / PIP[mkt]) if tr.status == "gesloten" else np.nan,
                "risk_pips_free": (trf.risk / PIP[mkt]) if trf.status == "gesloten" and trf.risk else np.nan}
-        if tr.status == "gesloten":
-            cand = pool[int(slot[int(r.s)])]
+        cand = pool.get(int(slot[int(r.s)]), np.array([], int)) if tr.status == "gesloten" else None
+        # placebo alleen als er een kandidaat bestaat buiten 5 dagen van de echte setup (bij US500 zijn sommige
+        # kwartieren bijna leeg; zonder deze controle bleef de lus eindeloos zoeken). Zelfde loting als vroeger.
+        if tr.status == "gesloten" and np.any((np.abs(cand - int(r.s)) >= 96 * 5) & (cand + 1 < len(bars))):
             i = int(cand[rng.integers(len(cand))])
             while abs(i - int(r.s)) < 96 * 5 or i + 1 >= len(bars):  # niet binnen 5 dagen van de echte setup
                 i = int(cand[rng.integers(len(cand))])
@@ -118,19 +131,20 @@ def run_market(folder, mkt, rng, period="verkenning"):
     return out
 
 
-def main(folder, outdir, period="verkenning"):
+def main(folder, outdir, period="verkenning", markets=BASE_MARKETS, suffix=""):
     os.makedirs(outdir, exist_ok=True)
     rng = np.random.default_rng(20261012)
     allm = []
-    for mkt in ("EURUSD", "GBPUSD", "XAUUSD"):
+    for mkt in markets:
         t0 = time.time()
         df = run_market(folder, mkt, rng, period)
         allm.append(df)
         g = df[df.status == "gesloten"]
         print(f"{mkt}: setups {len(df)}, gevuld {len(g)}, gem R {g.r_net.mean():+.3f}, zonder kosten {g.r_free.mean():+.3f}, "
               f"placebo {g.r_placebo.mean():+.3f}, placebo zonder kosten {g.r_placebo_free.mean():+.3f} ({time.time() - t0:.0f}s)", flush=True)
-    pd.concat(allm, ignore_index=True).to_pickle(os.path.join(outdir, f"dashboard_events_{period}.pkl"))
+    pd.concat(allm, ignore_index=True).to_pickle(os.path.join(outdir, f"dashboard_events_{period}{suffix}.pkl"))
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    extra = len(sys.argv) > 4 and sys.argv[4] == "extra"
+    main(*sys.argv[1:4], markets=EXTRA_MARKETS if extra else BASE_MARKETS, suffix="_extra" if extra else "")

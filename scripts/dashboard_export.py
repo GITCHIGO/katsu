@@ -13,10 +13,10 @@ import sys
 import numpy as np
 import pandas as pd
 
-from scripts.gfvg_test import INS
+from scripts.dashboard_build import INS
 
 ORDER = {
-    "markt": ["EURUSD", "GBPUSD", "XAUUSD"], "soort": ["FVG", "IFVG", "AMD", "Zone"],
+    "markt": ["EURUSD", "GBPUSD", "XAUUSD", "XAGUSD", "US500"], "soort": ["FVG", "IFVG", "AMD", "Zone"],
     "zone_tf": ["M15", "H1", "H4", "n.v.t."], "zone_entry": ["rand", "38,2", "n.v.t."], "zone_fvg": ["ja", "nee", "n.v.t."], "richting": ["long", "short"],
     "amd_variant": ["C1-E1", "C1-E2", "C2-E1", "C2-E2", "n.v.t."], "amd_dag": ["mee", "tegen", "geen"],
     "breuk": ["geen", "BOS", "CHoCH", "breuk uit neutraal", "n.v.t."], "sweep_swing": ["ja", "nee", "n.v.t."],

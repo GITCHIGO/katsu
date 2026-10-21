@@ -44,3 +44,9 @@ def test_grootste_daling():
     # cumulatief: 10, 4, 7, −3, 5 → top 10, dal −3 → daling 13
     assert max_drawdown([10, -6, 3, -10, 8]) == 13
     assert max_drawdown([-5, 2]) == 5          # meteen verlies telt vanaf 0
+
+
+def test_dollars_extra_markten():
+    df = pd.DataFrame({"markt": ["XAGUSD", "US500"], "pips": [20.0, -15.0], "r_net": [1.0, -1.0]})
+    # zilver: 20 pips (0,20 $) × 50 $ × 0,02 lot = 20 $ ; US500: −15 punten × 1 $ × 1 lot = −15 $
+    assert np.allclose(usd(df, {"XAGUSD": 0.02, "US500": 1.0}), [20.0, -15.0])
