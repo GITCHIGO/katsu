@@ -55,8 +55,8 @@ def check(c: Config):
     for m in MARKETS:
         if not (0 < c.lots.get(m, 0) <= 1.0):
             errors.append(f"lot voor {m} ontbreekt of is groter dan 1,0 (veiligheidsgrens)")
-    if len(c.dash_password) < 12:
-        errors.append("dashboard.password moet minstens 12 tekens hebben (het dashboard staat op internet)")
+    if len(c.dash_password) < 4:
+        errors.append("dashboard.password moet minstens 4 tekens hebben")
     if len(c.dash_secret) < 32:
         errors.append("dashboard.secret moet minstens 32 willekeurige tekens hebben")
     if errors:

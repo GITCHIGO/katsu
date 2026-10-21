@@ -48,7 +48,7 @@ Vul in:
 - `login`, `password`, `server` van je KATSU-demoaccount (server staat in MT5: Bestand → Inloggen).
 - `terminal`: pad naar `terminal64.exe` (rechtsklik op het MT5-icoon → Bestandslocatie openen).
 - `webhook`: Discord → jouw server → kanaal → ⚙ Kanaal bewerken → Integraties → Webhooks → Nieuwe webhook → URL kopiëren.
-- `password` (dashboard): minstens 12 tekens, **niet** hetzelfde als een ander wachtwoord.
+- `password` (dashboard): minstens 4 tekens, **niet** hetzelfde als een ander wachtwoord.
 - `secret`: maak hem met `python -c "import secrets; print(secrets.token_hex(32))"` en plak het resultaat.
 - `mode` blijft de eerste week **"loggen"**.
 

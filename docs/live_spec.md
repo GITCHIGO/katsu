@@ -59,8 +59,8 @@ gevuld · gesloten (TP/SL/einde dag/max duur, R, pips, bedrag) · geannuleerd (r
 fout of verbinding weg. Dagoverzicht om 23:00 BE. Een mislukt Discord-bericht stopt KATSU nooit.
 
 ## 5. Dashboard (stijl B 'Glas Aurora', gekozen 21 okt 2026)
-Flask op de VPS, poort 8080, via **http** op het IP van de VPS (keuze Gitchi). Wachtwoord ≥ 12 tekens (uniek!),
-max. 5 foute pogingen per 15 min per IP, sessiecookie (HttpOnly, SameSite=Strict), CSRF-sleutel op elke knop.
+Flask op de VPS, poort 8080, via **http** op het IP van de VPS (keuze Gitchi). Wachtwoord ≥ 4 tekens (keuze Gitchi; uniek!),
+max. 5 foute pogingen per 15 min per IP en 20 per 24 u in totaal, sessiecookie (HttpOnly, SameSite=Strict), CSRF-sleutel op elke knop.
 Werkt op gsm (onderbalk met 4 tabs) en desktop.
 - **Nu:** status (verbonden, demo/live, laatste en volgende scan), netto deze maand + curve, lopende trades met live R
   (balk van SL naar TP), klaarstaande en wachtende orders, per setup deze maand. Ververst elke 20 s.

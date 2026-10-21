@@ -40,8 +40,8 @@ def write_cfg(tmp_path, **kw):
 def test_config_loads_and_validates(tmp_path):
     c = load_config(write_cfg(tmp_path))
     assert c.mode == "loggen" and c.lots["XAUUSD"] == 0.02 and c.login == 123 and not c.allow_live
-    with pytest.raises(ValueError, match="12 tekens"):
-        load_config(write_cfg(tmp_path, **{"een-lang-wachtwoord": "kort"}))
+    with pytest.raises(ValueError, match="4 tekens"):
+        load_config(write_cfg(tmp_path, **{"een-lang-wachtwoord": "abc"}))
     with pytest.raises(ValueError, match="groter dan 1,0"):
         load_config(write_cfg(tmp_path, **{"XAUUSD = 0.02": "XAUUSD = 5.0"}))
     with pytest.raises(ValueError, match="loggen"):
@@ -194,3 +194,21 @@ def test_runner_refuses_live_account_and_runs_a_round(tmp_path):
     assert r.mgr.paused
     kinds = [x["kind"] for x in r.log.tail(50)]
     assert "scan" in kinds and "fout" in kinds                # noodknop wordt als 'fout' (rood) gelogd
+
+
+def test_dashboard_global_limit_over_many_ips(tmp_path):
+    """Kort wachtwoord: ook vanaf veel verschillende IP's samen max. 20 foute pogingen per 24 u."""
+    snap = Snapshot()
+    snap.set({"orders": [], "results_month": results([]), "results_all": results([])})
+    app = make_app(snap, "1234", "x" * 40, Logbook(str(tmp_path)))
+    c = app.test_client()
+    import katsu.live.web as W
+    old = W.time.sleep
+    W.time.sleep = lambda s: None
+    try:
+        for i in range(20):
+            c.post("/login", data={"pw": "fout"}, environ_base={"REMOTE_ADDR": f"10.0.0.{i}"})
+        r = c.post("/login", data={"pw": "1234"}, environ_base={"REMOTE_ADDR": "10.0.1.1"})
+    finally:
+        W.time.sleep = old
+    assert r.status_code == 429 and "24 uur" in r.get_data(as_text=True)

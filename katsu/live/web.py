@@ -3,7 +3,7 @@ Dashboard van KATSU Live (spec §5), stijl B 'Glas Aurora' (gekozen door Gitchi,
 Kleine Flask-app met wachtwoord. Leest alleen een momentopname die de runner elke 10 s klaarzet; de noodknop zet
 een verzoek klaar dat de runner uitvoert (MT5 wordt alleen vanuit de runner aangesproken).
 
-Beveiliging (dashboard staat op internet via http, keuze Gitchi): wachtwoord ≥ 12 tekens, max. 5 foute pogingen per
+Beveiliging (dashboard staat op internet via http, keuze Gitchi): wachtwoord ≥ 4 tekens (keuze Gitchi), max. 5 foute pogingen per
 15 min per IP, sessiecookie (HttpOnly, SameSite=Strict), CSRF-sleutel op elke knop. Zonder https gaat het wachtwoord
 onversleuteld over het net: gebruik een uniek wachtwoord dat je nergens anders gebruikt.
 """
@@ -311,6 +311,7 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None):
     app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Strict",
                       PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30)
     fails: dict = defaultdict(deque)
+    all_fails: deque = deque()          # alle IP's samen: max. 20 foute pogingen per 24 u (kort wachtwoord)
 
     def logged_in():
         return session.get("ok") is True
@@ -346,16 +347,22 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None):
         q = fails[ip]
         while q and q[0] < time.time() - 900:
             q.popleft()
+        while all_fails and all_fails[0] < time.time() - 86400:
+            all_fails.popleft()
         msg = ""
         if request.method == "POST":
             if len(q) >= 5:
                 return page("KATSU Live", "<div class='card'>Te veel foute pogingen. Probeer over 15 minuten opnieuw.</div>"), 429
+            if len(all_fails) >= 20:
+                return page("KATSU Live", "<div class='card'>Inloggen staat 24 uur dicht: te veel foute pogingen (van "
+                                          "verschillende plaatsen). KATSU blijft gewoon draaien.</div>"), 429
             if hmac.compare_digest(request.form.get("pw", "").encode(), password.encode()):
                 session.clear()
                 session["ok"] = True
                 session.permanent = True
                 return redirect("/")
             q.append(time.time())
+            all_fails.append(time.time())
             time.sleep(1.0)
             msg = "<div class='banner red'>Fout wachtwoord.</div>"
         body = (f"<div class='card' style='max-width:380px;margin:12vh auto 0;display:grid;gap:12px'>"

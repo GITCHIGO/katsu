@@ -20,6 +20,6 @@ symbols = { EURUSD = "EURUSD", GBPUSD = "GBPUSD", XAUUSD = "XAUUSD" }
 webhook = "https://discord.com/api/webhooks/..."
 
 [dashboard]
-password = "minstens-12-tekens-en-uniek"   # niet hetzelfde als een ander wachtwoord (het gaat via http)
+password = "1234"                 # minstens 4 tekens; niet hetzelfde als een ander wachtwoord (het gaat via http)
 secret = "plak-hier-64-willekeurige-tekens" # maak met: python -c "import secrets; print(secrets.token_hex(32))"
 port = 8080
