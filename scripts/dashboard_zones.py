@@ -92,7 +92,8 @@ def zone_rows(m15, mkt, mask, rng):
                             "fill_time": tr.entry_time, "exit_time": tr.exit_time if g else pd.NaT,
                             "risk_pips": tr.risk / PIP[mkt] if g else np.nan,
                             "risk_pips_free": trf.risk / PIP[mkt] if trf.status == "gesloten" and trf.risk else np.nan,
-                            "r_placebo": np.nan, "r_placebo_free": np.nan})
+                            "r_placebo": np.nan, "r_placebo_free": np.nan,
+                        "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price})
                 if g:
                     kf = int(m15.index.searchsorted(tr.entry_time, side="right") - 1)
                     cand = pool.get(int(slot[kf]), np.array([], int))

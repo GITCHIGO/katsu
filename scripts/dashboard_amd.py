@@ -81,7 +81,8 @@ def amd_rows(bars, mkt, mask, rng):
                         "fill_time": tr.entry_time, "exit_time": tr.exit_time if g else pd.NaT,
                         "risk_pips": tr.risk / PIP[mkt] if g else np.nan,
                         "risk_pips_free": trf.risk / PIP[mkt] if trf.status == "gesloten" and trf.risk else np.nan,
-                        "r_placebo": np.nan, "r_placebo_free": np.nan})
+                        "r_placebo": np.nan, "r_placebo_free": np.nan,
+                        "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price})
             if g:
                 cand = pool.get(int(slot[k]), np.array([], int))
                 cand = cand[(np.abs(cand - k) >= 96 * 5) & (cand + 1 < len(bars))]

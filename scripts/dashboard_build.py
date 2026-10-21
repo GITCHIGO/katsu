@@ -67,7 +67,10 @@ def placebo_plan(d, sym_ins, M, bars, i, risk, tp_dist, atr_i, mkt):
 
 
 def period_data(folder, mkt, period):
-    """Candles en masker (welke candles setups/placebo's mogen leveren) voor een periode."""
+    """Candles en masker (welke candles setups/placebo's mogen leveren) voor een periode.
+    period mag ook een functie(DatetimeIndex) -> bool-array zijn (vooruit-test: een eigen venster)."""
+    if callable(period):
+        return load_full(folder, mkt), period
     if period == "verkenning":
         bars = load(folder, mkt, "M15")
         return bars, R.explore_mask
@@ -102,7 +105,8 @@ def run_market(folder, mkt, rng, period="verkenning"):
                "kosten_r": ((ins.min_spread + 2 * ins.slip + ins.commission) / tr.risk) if tr.risk and tr.risk > 0 else np.nan,
                "fill_time": tr.entry_time, "exit_time": tr.exit_time if tr.status == "gesloten" else pd.NaT,
                "risk_pips": (tr.risk / PIP[mkt]) if tr.status == "gesloten" else np.nan,
-               "risk_pips_free": (trf.risk / PIP[mkt]) if trf.status == "gesloten" and trf.risk else np.nan}
+               "risk_pips_free": (trf.risk / PIP[mkt]) if trf.status == "gesloten" and trf.risk else np.nan,
+               "fill_px": tr.fill, "sl_px": tr.sl, "tp_px": tr.tp, "exit_px": tr.exit_price}
         cand = pool.get(int(slot[int(r.s)]), np.array([], int)) if tr.status == "gesloten" else None
         # placebo alleen als er een kandidaat bestaat buiten 5 dagen van de echte setup (bij US500 zijn sommige
         # kwartieren bijna leeg; zonder deze controle bleef de lus eindeloos zoeken). Zelfde loting als vroeger.
