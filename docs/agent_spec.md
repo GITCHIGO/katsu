@@ -47,6 +47,20 @@ Commit-bericht: tijd + korte samenvatting. Geen commit als er niets veranderde.
   tests → push → Gitchi doet zelf `git pull` op de VPS. **`git pull` is de toestemmingsknop.**
 - Regels van KATSU (spec, presets, stopregels) wijzigen nooit door de agent, ook niet "klein".
 
+## 7. Berichtenvenster in het dashboard (besluit Gitchi 22 okt 2026)
+- Tab **Agent** in het KATSU-dashboard: gesprek met de agent + de logboeken (nieuwste bovenaan).
+- Gitchi typt een vraag → `C:\katsu\data\agent_vragen.json` → verzamelaar → `katsu-data/vragen.json`.
+- De agent beantwoordt open vragen om **07:10** (met de dagelijkse check) en **19:10** (korte run, alleen vragen +
+  korte status, zonder gsm-melding) in `katsu-data/antwoorden.json` (`{"antwoorden": [{"vraag_id", "tijd", "tekst"}]}`).
+  Antwoorden zijn markdown; het dashboard toont ze veilig (alles ge-escaped). Vraagt Gitchi een wijziging: alleen
+  een voorstel, nooit uitvoeren (§5).
+- Het antwoord verschijnt in het dashboard zodra de verzamelaar het binnenhaalt (elk uur).
+
+## 8. Discord (besluit Gitchi 22 okt 2026: alleen dringend + trades)
+Naar Discord gaan nog: waakhond (KATSU stil, MT5 weg, verzamelaar faalt), fouten (ook de noodknop), geweigerde
+orders, gevulde en gesloten trades. Signalen, geplaatste/geannuleerde orders, scans en het dagoverzicht staan
+alleen nog in het dashboard. Instelbaar met `[discord] meldingen = [...]` in config.toml.
+
 ## 6. Bouw en tests
 - `katsu/agent/collect.py` (verzamelaar + waakhond), runner schrijft `status.json`, `deals.json`, `vooruittest.json`.
 - Tests met tijdelijke mappen en een lokale git-repo (geen GitHub nodig in de tests).

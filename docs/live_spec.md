@@ -54,7 +54,9 @@ Wijzigingen t.o.v. v0.1 staan onderaan (§9).
   geweigerd · gemist.
 
 ## 4. Discord
-Berichten: nieuw signaal (stand loggen) · order geplaatst (setup, pair, richting, entry, SL, TP, lot, geldig tot) ·
+**Sinds 22 okt 2026 (keuze Gitchi): alleen dringend + trades** — fout/noodknop, geweigerd, gevuld, gesloten, plus de waakhond (docs/agent_spec.md §8). De rest staat in het dashboard.
+
+Oorspronkelijk: Berichten: nieuw signaal (stand loggen) · order geplaatst (setup, pair, richting, entry, SL, TP, lot, geldig tot) ·
 gevuld · gesloten (TP/SL/einde dag/max duur, R, pips, bedrag) · geannuleerd (reden) · geblokkeerd · geweigerd ·
 fout of verbinding weg. Dagoverzicht om 23:00 BE. Een mislukt Discord-bericht stopt KATSU nooit.
 

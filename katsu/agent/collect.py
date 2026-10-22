@@ -22,7 +22,7 @@ MT5_WEG_NA = 10 * 60       # s niet verbonden → melding
 VERZAMEL_TE_OUD = 3 * 3600 # s zonder geslaagde verzameling → melding
 LOG_DAGEN = 30
 FILES = {"status": "status.json", "state": "orders.json", "control": "controle.json", "forward": "vooruittest.json",
-         "deals": "deals.json"}
+         "deals": "deals.json", "vragen": "vragen.json"}
 
 
 def _now():

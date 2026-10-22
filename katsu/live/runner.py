@@ -71,7 +71,7 @@ class Runner:
         self.log.write(ev)
         if kind == "fout":
             self.errors = ([ev] + self.errors)[:5]
-        if discord:
+        if discord and kind in self.cfg.discord_kinds:
             self.discord.send(f"{'🚨' if kind == 'fout' else 'ℹ️'} **{kind}** · {text}")
 
     def flush_events(self):
@@ -79,7 +79,7 @@ class Runner:
             self.log.write(asdict(ev))
             if ev.kind == "fout":
                 self.errors = ([asdict(ev)] + self.errors)[:5]
-            if ev.discord:
+            if ev.discord and ev.kind in self.cfg.discord_kinds:
                 self.discord.send(format_event(ev))
 
     # ------------------------------------------------------------ start
@@ -164,7 +164,8 @@ class Runner:
                  f"{sum(o['state'] in ('geplaatst', 'wacht') for o in orders)} orders"]
         if self.control.get("overeenkomst") is not None:
             lines.append(f"Controle backtest ↔ MT5: {self.control['overeenkomst']:.0%} ({self.control['n_gelijk']}/{self.control['n_trades']})")
-        self.discord.send("\n".join(lines))
+        if "overzicht" in self.cfg.discord_kinds:
+            self.discord.send("\n".join(lines))
         self.log.write({"time": str(self.now_fn()), "kind": "overzicht", "text": " | ".join(lines[1:])})
 
     # ------------------------------------------------------------ momentopname voor het dashboard
@@ -297,7 +298,8 @@ def _write_json(path, obj):
 
 def serve(runner: Runner):
     from werkzeug.serving import make_server
-    app = make_app(runner.snap, runner.cfg.dash_password, runner.cfg.dash_secret, runner.log)
+    app = make_app(runner.snap, runner.cfg.dash_password, runner.cfg.dash_secret, runner.log,
+                   agent={"vragen": runner.p["vragen"], "repo": runner.cfg.agent_repo})
     srv = make_server(runner.cfg.host, runner.cfg.port, app, threaded=True)
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()

@@ -157,3 +157,72 @@ def test_runner_writes_status_deals_and_forward(tmp_path):
     r.once(now + pd.Timedelta(minutes=1))
     st = json.load(open(p["status"]))
     assert st["verbonden"] is False and st["niet_verbonden_sinds"] == str(now + pd.Timedelta(minutes=1))
+
+
+# ------------------------------------------------------------------ berichtenvenster (agent_spec §7)
+
+def test_agentbox_thread_and_markdown(tmp_path):
+    from datetime import datetime, timezone
+    from katsu.live import agentbox as AB
+    vp, ap = str(tmp_path / "v.json"), str(tmp_path / "a.json")
+    assert AB.add_question(vp, "   ") is None                         # lege vraag: niets
+    q1 = AB.add_question(vp, "Waarom geen trade op goud?", datetime(2026, 10, 22, 5, 0, tzinfo=timezone.utc))
+    q2 = AB.add_question(vp, "Draait alles?", datetime(2026, 10, 22, 6, 0, tzinfo=timezone.utc))
+    json.dump({"antwoorden": [{"vraag_id": q1["id"], "tijd": "2026-10-22T07:15:00+00:00", "tekst": "Geen setup."}]},
+              open(ap, "w"))
+    t = AB.thread(vp, ap)
+    assert [(m["van"], m.get("open")) for m in t] == [("gitchi", False), ("gitchi", True), ("agent", None)]  # op tijd
+    h = AB.md_to_html("# Titel\n- **vet** punt\n\n| a | b |\n|---|---|\n| 1 | 2 |\n<script>x</script>")
+    assert "<h3 class='mdh'>Titel</h3>" in h and "<b>vet</b>" in h and "<td>1</td>" in h
+    assert "<script>" not in h and "&lt;script&gt;" in h                # niets van de agent wordt uitgevoerd
+
+
+def test_dashboard_agent_tab_post_question(tmp_path):
+    from katsu.live.notify import Logbook
+    from katsu.live.report import results
+    from katsu.live.web import Snapshot, make_app
+    repo = tmp_path / "katsu-data"
+    os.makedirs(repo / "logboek")
+    (repo / "logboek" / "2026-10-22-dag.md").write_text("Status: OK\n- KATSU draait\n", encoding="utf-8")
+    snap = Snapshot()
+    snap.set({"orders": [], "results_month": results([]), "results_all": results([])})
+    vp = str(tmp_path / "agent_vragen.json")
+    app = make_app(snap, "1234", "x" * 40, Logbook(str(tmp_path / "log")), agent={"vragen": vp, "repo": str(repo)})
+    c = app.test_client()
+    c.post("/login", data={"pw": "1234"})
+    page = c.get("/agent").get_data(as_text=True)
+    assert "Status: OK" in page and "Gesprek met de agent" in page
+    token = page.split("name='csrf' value='")[1].split("'")[0]
+    assert c.post("/agent", data={"vraag": "test?", "csrf": "fout"}).status_code == 400
+    assert c.post("/agent", data={"vraag": "Waarom geen trade?", "csrf": token}).status_code == 302
+    assert "wacht op antwoord" in c.get("/agent").get_data(as_text=True)
+    assert json.load(open(vp))["vragen"][0]["tekst"] == "Waarom geen trade?"
+
+
+def test_discord_only_urgent_and_trades(tmp_path):
+    from katsu.live.fake import FakeBroker
+    from katsu.live.orders import Event
+    from katsu.live.runner import Runner
+    c, p = cfg_in(tmp_path)
+    r = Runner(c, broker=FakeBroker(), now_fn=lambda: pd.Timestamp("2026-10-22 10:00"))
+    d = FakeDiscord()
+    r.discord = d
+    r.note("info", "gestart")
+    r.note("scan", "scan ok")
+    r.note("fout", "MT5 weg")
+    r.mgr = type("M", (), {"drain": lambda self: [Event("t", "signaal", "nieuw signaal"), Event("t", "geplaatst", "x"),
+                                                   Event("t", "gevuld", "EURUSD gevuld"),
+                                                   Event("t", "gesloten", "EURUSD TP")]})()
+    r.flush_events()
+    assert [m.split("·")[0].strip() for m in d.sent] == ["🚨 **fout**", "✅ **gevuld**", "🏁 **gesloten**"]
+
+
+def test_collect_includes_questions(tmp_path, remote_and_clone):
+    remote, clone = remote_and_clone
+    c, p = cfg_in(tmp_path, clone)
+    status(p, NOW)
+    from katsu.live import agentbox as AB
+    AB.add_question(p["vragen"], "Hoe gaat het?")
+    collect(c, NOW)
+    files = git("--git-dir", str(remote), "ls-tree", "-r", "--name-only", "main").split()
+    assert "vragen.json" in files

@@ -24,6 +24,8 @@ class Config:
     lots: dict = field(default_factory=lambda: {"EURUSD": 0.10, "GBPUSD": 0.10, "XAUUSD": 0.02})
     symbols: dict = field(default_factory=lambda: {m: m for m in MARKETS})
     webhook: str = ""
+    # Welke meldingen naar Discord gaan (besluit Gitchi 22 okt 2026: alleen dringend + trades). De rest: dashboard.
+    discord_kinds: tuple = ("fout", "geweigerd", "gevuld", "gesloten")
     dash_password: str = ""
     dash_secret: str = ""
     port: int = 8080
@@ -43,6 +45,8 @@ def load_config(path: str) -> Config:
                host=db.get("host", "0.0.0.0"), agent_repo=d.get("agent", {}).get("repo_dir", Config.agent_repo))
     if "lots" in k:
         c.lots = {m: float(v) for m, v in k["lots"].items()}
+    if "meldingen" in dc:
+        c.discord_kinds = tuple(dc["meldingen"])
     if "symbols" in k:
         c.symbols = {**c.symbols, **k["symbols"]}
     check(c)
@@ -68,7 +72,8 @@ def paths(c: Config) -> dict:
     p = {"data": c.data_dir, "bars": os.path.join(c.data_dir, "bars"), "log": os.path.join(c.data_dir, "log"),
          "state": os.path.join(c.data_dir, "state.json"), "control": os.path.join(c.data_dir, "controle.json"),
          "status": os.path.join(c.data_dir, "status.json"), "deals": os.path.join(c.data_dir, "deals.json"),
-         "forward": os.path.join(c.data_dir, "vooruittest.json")}
+         "forward": os.path.join(c.data_dir, "vooruittest.json"),
+         "vragen": os.path.join(c.data_dir, "agent_vragen.json")}
     for k in ("data", "bars", "log"):
         os.makedirs(p[k], exist_ok=True)
     return p

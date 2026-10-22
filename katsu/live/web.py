@@ -10,6 +10,7 @@ onversleuteld over het net: gebruik een uniek wachtwoord dat je nergens anders g
 from __future__ import annotations
 
 import hmac
+import os
 import html
 import secrets
 import threading
@@ -144,8 +145,16 @@ th:first-child,td:first-child{text-align:left;font-family:var(--ui)}
 color:#fff;font:600 13px var(--ui);cursor:pointer;text-decoration:none}
 .btn.red{background:rgba(255,122,150,.25);border-color:rgba(255,122,150,.6)}
 nav{position:fixed;left:12px;right:12px;bottom:12px;max-width:560px;margin:0 auto;padding:6px;border-radius:22px;
-background:rgba(20,16,42,.78);border:1px solid var(--line);backdrop-filter:blur(16px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;z-index:5}
-nav a{height:46px;border-radius:16px;display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);font-size:13px}
+background:rgba(20,16,42,.78);border:1px solid var(--line);backdrop-filter:blur(16px);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;z-index:5}
+nav a{height:46px;border-radius:16px;display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);font-size:12px;min-width:0}
+.msg{max-width:88%;padding:10px 12px;border-radius:16px;font-size:13.5px;line-height:1.5;overflow-wrap:anywhere}
+.msg.me{margin-left:auto;background:linear-gradient(90deg,rgba(255,122,195,.22),rgba(169,139,255,.22));border:1px solid rgba(169,139,255,.35)}
+.msg.ag{background:var(--glass);border:1px solid rgba(110,231,255,.28)}
+.msg .meta{margin-top:4px}
+textarea{width:100%;min-height:84px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff;font:14px var(--ui);resize:vertical}
+.mdh{margin:10px 0 4px;font-size:14px}.mdp{margin:4px 0}.mdl{margin:4px 0 4px 18px;padding:0}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:12px}
 nav a.on{background:linear-gradient(90deg,rgba(255,122,195,.35),rgba(169,139,255,.35));color:#fff;font-weight:600}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .legend span{display:flex;align-items:center;gap:6px}.legend i{width:10px;height:3px;border-radius:2px;display:inline-block}
@@ -168,7 +177,8 @@ def page(title, body, tab=None, refresh=None):
     if tab is not None:
         nav = "<nav aria-label='Hoofdmenu'>" + "".join(
             f"<a href='{u}' class='{'on' if tab == k else ''}'>{k}</a>"
-            for k, u in (("Nu", "/"), ("Resultaten", "/resultaten"), ("Controle", "/controle"), ("Log", "/log"))) + "</nav>"
+            for k, u in (("Nu", "/"), ("Resultaten", "/resultaten"), ("Controle", "/controle"), ("Agent", "/agent"),
+                         ("Log", "/log"))) + "</nav>"
     meta = f"<meta http-equiv='refresh' content='{refresh}'>" if refresh else ""
     return (f"<!doctype html><html lang='nl'><head><meta charset='utf-8'><meta name='viewport' "
             f"content='width=device-width,initial-scale=1'><title>{e(title)}</title>{meta}{FONTS}<style>{CSS}</style>"
@@ -305,7 +315,7 @@ def summary_table(rows, cur):
 
 # ------------------------------------------------------------------ app
 
-def make_app(snap: Snapshot, password: str, secret: str, logbook=None):
+def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: dict | None = None):
     app = Flask(__name__)
     app.secret_key = secret
     app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Strict",
@@ -484,6 +494,49 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None):
                 f"Laatst berekend: {be(s.get('control_time'))}.</p></section>" + only)
         return page("KATSU Live — controle", body, "Controle")
 
+    @app.route("/agent", methods=["GET", "POST"])
+    def agent_page():
+        from katsu.live import agentbox as AB
+        s = snap.get()
+        if agent is None:
+            return page("KATSU Live — agent", header(s) + "<div class='empty'>Agent niet ingesteld.</div>", "Agent")
+        if request.method == "POST":
+            check_csrf()
+            AB.add_question(agent["vragen"], request.form.get("vraag", ""))
+            return redirect("/agent")
+        msgs = AB.thread(agent["vragen"], os.path.join(agent["repo"], "antwoorden.json"))
+        chat = "".join(
+            f"<div class='msg {'me' if m['van'] == 'gitchi' else 'ag'}'>"
+            + (e(m["tekst"]).replace(chr(10), "<br>") if m["van"] == "gitchi" else AB.md_to_html(m["tekst"]))
+            + f"<div class='meta'>{'jij' if m['van'] == 'gitchi' else 'agent'} · {_utc_be(m.get('tijd'))}"
+            + (" · wacht op antwoord" if m.get("open") else "") + "</div></div>" for m in msgs[-60:])
+        if not chat:
+            chat = ("<div class='empty'>Nog geen berichten. Stel hieronder een vraag aan de agent, bv. "
+                    "\"Waarom was er gisteren geen trade op goud?\"</div>")
+        books = AB.logbooks(agent["repo"])
+        latest = books[0] if books else None
+        lb = ""
+        if latest:
+            lb = (f"<section class='card'><h2>Laatste logboek · {e(latest['soort'])} · {e(latest['datum'])}</h2>"
+                  f"{AB.md_to_html(latest['tekst'])}</section>")
+            older = "".join(f"<details><summary>{e(b['soort'])} · {e(b['datum'])}</summary>{AB.md_to_html(b['tekst'])}</details>"
+                            for b in books[1:])
+            if older:
+                lb += f"<section class='card' style='display:grid;gap:8px'><h2>Eerdere logboeken</h2>{older}</section>"
+        else:
+            lb = ("<section class='card'><div class='empty'>Nog geen logboek. De agent schrijft elke dag om 07:10 een korte "
+                  "check en op zondag om 10:10 een volledige review.</div></section>")
+        form = (f"<form method='post' class='card' style='display:grid;gap:10px'>"
+                f"<input type='hidden' name='csrf' value='{csrf()}'>"
+                f"<label class='k' for='vraag'>Vraag aan de agent</label>"
+                f"<textarea id='vraag' name='vraag' maxlength='2000' placeholder='Typ je vraag…'></textarea>"
+                f"<button class='btn'>Versturen</button>"
+                f"<span class='meta'>De agent leest alles en antwoordt om 07:10 en 19:10; het antwoord staat hier binnen "
+                f"±1 uur daarna. Hij kan niets aanpassen: voorstellen keur je goed in een chat met Claude.</span></form>")
+        body = (header(s) + f"<section class='card' style='display:grid;gap:10px'><h2>Gesprek met de agent</h2>{chat}</section>"
+                + form + lb)
+        return page("KATSU Live — agent", body, "Agent")
+
     @app.route("/log")
     def log():
         s = snap.get()
@@ -522,6 +575,19 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None):
         return redirect("/")
 
     return app
+
+
+def _utc_be(t):
+    """ISO-tijd (UTC of met tijdzone) → Belgische tijd als tekst."""
+    if not t:
+        return "—"
+    try:
+        ts = pd.Timestamp(t)
+        if ts.tzinfo is None:
+            ts = ts.tz_localize("UTC")
+        return ts.tz_convert("Europe/Brussels").strftime("%d-%m %H:%M")
+    except Exception:
+        return str(t)[:16]
 
 
 def _merge_curves(setups: dict):
