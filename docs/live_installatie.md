@@ -95,3 +95,37 @@ git pull
 pip install -r requirements-live.txt
 ```
 Daarna KATSU herstarten. Open orders en trades blijven bij MT5 staan (met SL en TP) en worden na de herstart opgepikt.
+
+## 11. Agent: verzamelaar en waakhond (docs/agent_spec.md)
+1. **Privé-repo maken** op github.com: **New repository** → naam `katsu-data` → **Private** → vink
+   **Add a README file** aan → Create.
+2. **Kloon op de VPS** (de eerste keer opent Git een venster om in te loggen bij GitHub: inloggen, dan onthoudt
+   Windows het):
+   ```
+   cd C:\katsu
+   git clone https://github.com/GITCHIGO/katsu-data.git
+   ```
+3. **Config:** zet onderaan `C:\katsu\config.toml`:
+   ```
+   [agent]
+   repo_dir = 'C:\katsu\katsu-data'
+   ```
+4. **Code bijwerken en testen** (KATSU mag blijven draaien; herstart hem daarna wel — Ctrl+C en opnieuw starten —
+   zodat hij de hartslag schrijft):
+   ```
+   cd C:\katsu\code
+   git pull
+   .\.venv\Scripts\Activate.ps1
+   python -m katsu.agent.collect C:\katsu\config.toml verzamel
+   python -m katsu.agent.collect C:\katsu\config.toml waakhond
+   ```
+   Verwacht: `verzamel: doorgestuurd` en `waakhond: alles in orde`. Op github.com staan nu bestanden in `katsu-data`.
+5. **Automatisch laten lopen** (PowerShell, gewone gebruiker — dezelfde als waarmee je inlogt):
+   ```
+   schtasks /Create /TN "KATSU waakhond" /SC MINUTE /MO 15 /TR "C:\katsu\code\deploy\waakhond.bat" /F
+   schtasks /Create /TN "KATSU verzamel" /SC HOURLY /TR "C:\katsu\code\deploy\verzamel.bat" /F
+   ```
+   Elke 15 min / elk uur flitst er kort een zwart venster: dat is normaal.
+6. **Toegang voor Claude:** geef de Claude-app op GitHub toegang tot `katsu-data` (github.com → Settings →
+   Applications → Claude → Configure → Repository access → `katsu-data` toevoegen). Daarna zet Claude de dagelijkse
+   en wekelijkse review klaar.

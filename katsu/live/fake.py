@@ -177,6 +177,18 @@ class FakeBroker:
         return ClosedInfo(c["price_open"], c["time"], c["exit"], c["exit_time"], c["reason"], c["profit"],
                           c["commission"], 0.0)
 
+    def deals(self, since):
+        out = []
+        for t, c in list(self.open.items()) + list(self.closed.items()):
+            out.append({"ticket": t * 10, "positie": t, "tijd": str(c["time"]), "symbool": c["market"], "entry": 0,
+                        "volume": c["volume"], "prijs": c["price_open"], "winst": 0.0, "commissie": c["commission"],
+                        "swap": 0.0, "magic": c["magic"], "commentaar": c["comment"]})
+            if "exit" in c:
+                out.append({"ticket": t * 10 + 1, "positie": t, "tijd": str(c["exit_time"]), "symbool": c["market"],
+                            "entry": 1, "volume": c["volume"], "prijs": c["exit"], "winst": c["profit"], "commissie": 0.0,
+                            "swap": 0.0, "magic": c["magic"], "commentaar": c["reason"]})
+        return [d for d in out if pd.Timestamp(d["tijd"]) >= pd.Timestamp(since)]
+
     def order_was_filled(self, ticket):
         return ticket if (ticket in self.open or ticket in self.closed) else None
 

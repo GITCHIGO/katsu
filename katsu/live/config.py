@@ -28,6 +28,7 @@ class Config:
     dash_secret: str = ""
     port: int = 8080
     host: str = "0.0.0.0"
+    agent_repo: str = r"C:\katsu\katsu-data"      # lokale kloon van de privé-repo GITCHIGO/katsu-data (agent)
 
 
 def load_config(path: str) -> Config:
@@ -39,7 +40,7 @@ def load_config(path: str) -> Config:
                allow_live=bool(mt5.get("allow_live", False)), mode=k.get("mode", "loggen"),
                data_dir=k.get("data_dir", Config.data_dir), webhook=dc.get("webhook", ""),
                dash_password=db.get("password", ""), dash_secret=db.get("secret", ""), port=int(db.get("port", 8080)),
-               host=db.get("host", "0.0.0.0"))
+               host=db.get("host", "0.0.0.0"), agent_repo=d.get("agent", {}).get("repo_dir", Config.agent_repo))
     if "lots" in k:
         c.lots = {m: float(v) for m, v in k["lots"].items()}
     if "symbols" in k:
@@ -65,7 +66,9 @@ def check(c: Config):
 
 def paths(c: Config) -> dict:
     p = {"data": c.data_dir, "bars": os.path.join(c.data_dir, "bars"), "log": os.path.join(c.data_dir, "log"),
-         "state": os.path.join(c.data_dir, "state.json"), "control": os.path.join(c.data_dir, "controle.json")}
+         "state": os.path.join(c.data_dir, "state.json"), "control": os.path.join(c.data_dir, "controle.json"),
+         "status": os.path.join(c.data_dir, "status.json"), "deals": os.path.join(c.data_dir, "deals.json"),
+         "forward": os.path.join(c.data_dir, "vooruittest.json")}
     for k in ("data", "bars", "log"):
         os.makedirs(p[k], exist_ok=True)
     return p

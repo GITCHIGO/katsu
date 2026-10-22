@@ -17,7 +17,7 @@ import threading
 import time
 import traceback
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -62,6 +62,8 @@ class Runner:
         self.errors: list = []
         self.summary_day: str | None = None
         self.started: pd.Timestamp | None = None
+        self.disconnected_since: pd.Timestamp | None = None
+        self.daily_day = None
 
     # ------------------------------------------------------------ meldingen
     def note(self, kind, text, discord=True, now=None):
@@ -193,6 +195,43 @@ class Runner:
             "errors": self.errors,
         })
 
+    # ------------------------------------------------------------ voor de agent (docs/agent_spec.md)
+    def write_status(self, now):
+        """Hartslag voor de waakhond en de agent; aan het einde van elke ronde van 10 s."""
+        orders = list(self.mgr.orders.values()) if self.mgr else []
+        st = {"tijd_server": str(now), "tijd_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "verbonden": self.connected,
+              "niet_verbonden_sinds": None if self.disconnected_since is None else str(self.disconnected_since),
+              "stand": self.cfg.mode, "gepauzeerd": bool(self.mgr and self.mgr.paused),
+              "account": None if self.account is None else asdict(self.account),
+              "laatste_scan": None if self.last_scan_done is None else str(self.last_scan_done),
+              "open_trades": [o.id for o in orders if o.state == "gevuld"],
+              "open_orders": [o.id for o in orders if o.state in ("geplaatst", "wacht")],
+              "fouten": self.errors[:5]}
+        _write_json(self.p["status"], st)
+
+    def do_daily(self, now):
+        """Eén keer per serverdag: accounthistoriek en vooruit-test (zelfde code als scripts/vooruittest.py)."""
+        if self.daily_day == now.date() or not self.bars:
+            return
+        self.daily_day = now.date()
+        try:
+            self.account = self.broker.account()
+            _write_json(self.p["deals"], {"sinds": str(self.started), "deals": self.broker.deals(self.started)})
+        except Exception as ex:
+            self.note("fout", f"accounthistoriek ophalen mislukt: {ex!r}", discord=False, now=now)
+        try:
+            import numpy as np
+            import scripts.vooruittest as VT
+            t0 = pd.Timestamp(VT.START)
+            df = VT.rows_for(self.bars, lambda t: np.asarray(t >= t0), np.random.default_rng(20261021))
+            rep = VT.report(df, VT.START, None, "vooruit-test (MT5-data van de VPS)") if len(df) else \
+                {"label": "vooruit-test", "start": VT.START, "leeg": True}
+            rep["berekend"] = str(now)
+            _write_json(self.p["forward"], rep)
+        except Exception as ex:
+            self.note("fout", f"vooruit-test berekenen mislukt: {ex!r}", discord=False, now=now)
+
     # ------------------------------------------------------------ hoofdlus
     def handle_requests(self, now):
         for r in self.snap.take_requests():
@@ -208,7 +247,9 @@ class Runner:
         if ok != self.connected:
             self.note("fout" if not ok else "info", "verbinding met MT5 weg" if not ok else "verbinding met MT5 terug", now=now)
             self.connected = ok
+        self.disconnected_since = None if ok else (self.disconnected_since or now)
         if not ok:
+            self.write_status(now)
             try:
                 self.broker.connect()
             except Exception:
@@ -224,8 +265,10 @@ class Runner:
             self.next_scan = next_scan_time(now)
         self.mgr.step(now)
         self.flush_events()
+        self.do_daily(now)
         self.daily_summary()
         self.publish(now)
+        self.write_status(now)
 
     def loop(self):
         while True:
@@ -242,6 +285,14 @@ class Runner:
                     except Exception:
                         pass
             time.sleep(max(1.0, TICK_S - (time.time() - t0)))
+
+
+def _write_json(path, obj):
+    import json
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, ensure_ascii=False, indent=1, default=str)
+    os.replace(tmp, path)
 
 
 def serve(runner: Runner):

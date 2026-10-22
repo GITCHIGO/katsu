@@ -287,6 +287,21 @@ class Broker:
                           reason, float(sum(d.profit for d in deals)), float(sum(d.commission for d in deals)),
                           float(sum(d.swap for d in deals)))
 
+    def deals(self, since: pd.Timestamp) -> list[dict]:
+        """Alle deals op het account sinds `since` (servertijd), ook met de hand of van andere programma's."""
+        t0 = (pd.Timestamp(since) - pd.Timedelta(days=2)).to_pydatetime()
+        t1 = (server_now() + pd.Timedelta(days=2)).to_pydatetime()
+        out = []
+        for d in self.mt5.history_deals_get(t0, t1) or ():
+            t = pd.Timestamp(d.time, unit="s")
+            if t < pd.Timestamp(since):
+                continue
+            out.append({"ticket": d.ticket, "order": d.order, "positie": d.position_id, "tijd": str(t), "symbool": d.symbol,
+                        "type": d.type, "entry": d.entry, "volume": d.volume, "prijs": d.price, "winst": d.profit,
+                        "commissie": d.commission, "swap": d.swap, "magic": d.magic, "commentaar": d.comment,
+                        "reden": d.reason})
+        return out
+
     def order_was_filled(self, ticket: int) -> int | None:
         """Positie-ID als een (verdwenen) limietorder gevuld werd, anders None."""
         deals = self.mt5.history_deals_get(position=int(ticket)) or ()
