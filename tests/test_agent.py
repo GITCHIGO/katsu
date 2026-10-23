@@ -191,7 +191,8 @@ def test_dashboard_agent_tab_post_question(tmp_path):
     c = app.test_client()
     c.post("/login", data={"pw": "1234"})
     page = c.get("/agent").get_data(as_text=True)
-    assert "Status: OK" in page and "Gesprek met de agent" in page
+    assert "Status: OK" in page and "KATSU agent" in page and "aria-label='KATSU agent'" in page
+    assert "volgende ronde" in page and "laatste logboek 22-10" in page
     token = page.split("name='csrf' value='")[1].split("'")[0]
     assert c.post("/agent", data={"vraag": "test?", "csrf": "fout"}).status_code == 400
     assert c.post("/agent", data={"vraag": "Waarom geen trade?", "csrf": token}).status_code == 302
@@ -259,3 +260,16 @@ def test_mt5_disconnect_only_alerted_after_2_minutes(tmp_path):
     fb.is_connected = True
     r.once(t0 + pd.Timedelta(minutes=8, seconds=10))
     assert len(d.sent) == 2 and "terug na 3 min" in d.sent[1]
+
+
+def test_agent_next_run_and_status(tmp_path):
+    from katsu.live import agentbox as AB
+    assert AB.next_run(pd.Timestamp("2026-10-23 03:00")) == pd.Timestamp("2026-10-23 07:10")
+    assert AB.next_run(pd.Timestamp("2026-10-23 07:10")) == pd.Timestamp("2026-10-23 19:10")
+    assert AB.next_run(pd.Timestamp("2026-10-23 20:00")) == pd.Timestamp("2026-10-24 07:10")
+    assert AB.last_status(str(tmp_path)) == (None, None)
+    os.makedirs(tmp_path / "logboek")
+    (tmp_path / "logboek" / "2026-10-22-dag.md").write_text("# Logboek\n**Status: LET OP**\n- x\n", encoding="utf-8")
+    assert AB.last_status(str(tmp_path)) == ("2026-10-22", "Status: LET OP")
+    svg = AB.avatar_svg(40)
+    assert svg.startswith("<svg") and "<path d='M" in svg and "<text" not in svg      # geen font nodig

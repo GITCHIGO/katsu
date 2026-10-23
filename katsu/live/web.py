@@ -151,6 +151,8 @@ nav a{height:46px;border-radius:16px;display:flex;align-items:center;justify-con
 .msg.me{margin-left:auto;background:linear-gradient(90deg,rgba(255,122,195,.22),rgba(169,139,255,.22));border:1px solid rgba(169,139,255,.35)}
 .msg.ag{background:var(--glass);border:1px solid rgba(110,231,255,.28)}
 .msg .meta{margin-top:4px}
+.agrow{display:flex;gap:8px;align-items:flex-start;max-width:92%}.agrow .msg{max-width:none}
+.agent-head{display:flex;gap:14px;align-items:center}
 textarea{width:100%;min-height:84px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff;font:14px var(--ui);resize:vertical}
 .mdh{margin:10px 0 4px;font-size:14px}.mdp{margin:4px 0}.mdl{margin:4px 0 4px 18px;padding:0}
 details summary{cursor:pointer;color:var(--muted);font-size:13px}
@@ -505,11 +507,14 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: di
             AB.add_question(agent["vragen"], request.form.get("vraag", ""))
             return redirect("/agent")
         msgs = AB.thread(agent["vragen"], os.path.join(agent["repo"], "antwoorden.json"))
-        chat = "".join(
-            f"<div class='msg {'me' if m['van'] == 'gitchi' else 'ag'}'>"
-            + (e(m["tekst"]).replace(chr(10), "<br>") if m["van"] == "gitchi" else AB.md_to_html(m["tekst"]))
-            + f"<div class='meta'>{'jij' if m['van'] == 'gitchi' else 'agent'} · {_utc_be(m.get('tijd'))}"
-            + (" · wacht op antwoord" if m.get("open") else "") + "</div></div>" for m in msgs[-60:])
+        def bubble(m):
+            me = m["van"] == "gitchi"
+            inner = (f"<div class='msg {'me' if me else 'ag'}'>"
+                     + (e(m["tekst"]).replace(chr(10), "<br>") if me else AB.md_to_html(m["tekst"]))
+                     + f"<div class='meta'>{'jij' if me else 'agent'} · {_utc_be(m.get('tijd'))}"
+                     + (" · wacht op antwoord" if m.get("open") else "") + "</div></div>")
+            return inner if me else f"<div class='agrow'>{AB.avatar_svg(34)}{inner}</div>"
+        chat = "".join(bubble(m) for m in msgs[-60:])
         if not chat:
             chat = ("<div class='empty'>Nog geen berichten. Stel hieronder een vraag aan de agent, bv. "
                     "\"Waarom was er gisteren geen trade op goud?\"</div>")
@@ -533,7 +538,17 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: di
                 f"<button class='btn'>Versturen</button>"
                 f"<span class='meta'>De agent leest alles en antwoordt om 07:10 en 19:10; het antwoord staat hier binnen "
                 f"±1 uur daarna. Hij kan niets aanpassen: voorstellen keur je goed in een chat met Claude.</span></form>")
-        body = (header(s) + f"<section class='card' style='display:grid;gap:10px'><h2>Gesprek met de agent</h2>{chat}</section>"
+        import pandas as _pd
+        now_be = server_to_be(_pd.Timestamp(s["now"])) if s.get("now") else _pd.Timestamp.now(tz="Europe/Brussels").tz_localize(None)
+        nxt = AB.next_run(now_be)
+        day, stat = AB.last_status(agent["repo"])
+        statline = (f"<span class='meta'><span class='dot' style='display:inline-block;margin-right:6px'></span>"
+                    f"slaapt · volgende ronde {nxt:%H:%M}</span>"
+                    + (f"<span class='meta'>laatste logboek {e(day[8:10] + '-' + day[5:7])} · {e(stat or '—')}</span>" if day else
+                       "<span class='meta'>nog geen logboek</span>"))
+        who = (f"<div class='agent-head'>{AB.avatar_svg(56)}<div style='display:grid;gap:3px;min-width:0'>"
+               f"<b>KATSU agent</b>{statline}</div></div>")
+        body = (header(s) + f"<section class='card' style='display:grid;gap:12px'>{who}<h2 style='margin:4px 0 0'>Gesprek</h2>{chat}</section>"
                 + form + lb)
         return page("KATSU Live — agent", body, "Agent")
 

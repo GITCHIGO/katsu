@@ -55,6 +55,8 @@ Commit-bericht: tijd + korte samenvatting. Geen commit als er niets veranderde.
   Antwoorden zijn markdown; het dashboard toont ze veilig (alles ge-escaped). Vraagt Gitchi een wijziging: alleen
   een voorstel, nooit uitvoeren (§5).
 - Het antwoord verschijnt in het dashboard zodra de verzamelaar het binnenhaalt (elk uur).
+- Avatar (keuze Gitchi 23 okt 2026): ring in de KATSU-kleuren met 勝 ("katsu", winnen), als vectorpad. Bovenaan de
+  tab: "slaapt · volgende ronde HH:MM" en "laatste logboek DD-MM · Status: …".
 
 ## 8. Discord (besluit Gitchi 22 okt 2026: alleen dringend + trades)
 Naar Discord gaan nog: waakhond (KATSU stil, MT5 weg, verzamelaar faalt), fouten (ook de noodknop), geweigerde
