@@ -226,3 +226,36 @@ def test_collect_includes_questions(tmp_path, remote_and_clone):
     collect(c, NOW)
     files = git("--git-dir", str(remote), "ls-tree", "-r", "--name-only", "main").split()
     assert "vragen.json" in files
+
+
+def test_mt5_disconnect_only_alerted_after_2_minutes(tmp_path):
+    from katsu.live.fake import FakeBroker
+    from katsu.live.runner import Runner
+    from tests.test_live_app import flat_bars
+    c, p = cfg_in(tmp_path)
+    fb = FakeBroker()
+    for m, px in (("EURUSD", 1.10), ("GBPUSD", 1.30), ("XAUUSD", 2400.0)):
+        fb.bars[m] = flat_bars("2026-10-12", 900, px)
+        fb.set_price(m, px, px + 0.00002, "2026-10-21 10:15:05")
+    t0 = pd.Timestamp("2026-10-21 10:15:10")
+    r = Runner(c, broker=fb, now_fn=lambda: t0)
+    r.start()
+    r.next_scan = t0 + pd.Timedelta(hours=1)
+    d = FakeDiscord()
+    r.discord = d
+    # hapering van 20 s: niets in Discord (wel in het log)
+    fb.is_connected = False
+    r.once(t0)
+    r.once(t0 + pd.Timedelta(seconds=10))
+    fb.is_connected = True
+    r.once(t0 + pd.Timedelta(seconds=20))
+    assert d.sent == []
+    assert any("terug na" in x["text"] for x in r.log.tail(20))
+    # 3 min weg: één alarm na 2 min, en 'terug' achteraf
+    fb.is_connected = False
+    for k in range(0, 19):                                  # 0 .. 180 s
+        r.once(t0 + pd.Timedelta(minutes=5, seconds=10 * k))
+    assert len(d.sent) == 1 and "2 min weg" in d.sent[0]
+    fb.is_connected = True
+    r.once(t0 + pd.Timedelta(minutes=8, seconds=10))
+    assert len(d.sent) == 2 and "terug na 3 min" in d.sent[1]

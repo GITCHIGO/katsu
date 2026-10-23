@@ -34,6 +34,7 @@ from scripts.dashboard_build import INS
 BARS_COUNT = 52_000            # ±24 maanden M15 (+ marge); MT5 'Max. bars in chart' moet hoger staan
 TICK_S = 10
 SCAN_DELAY = pd.Timedelta(seconds=10)
+DISCONNECT_ALERT = pd.Timedelta(minutes=2)       # korte haperingen van MT5 niet melden (besluit Gitchi 23 okt 2026)
 
 
 def next_scan_time(now: pd.Timestamp) -> pd.Timestamp:
@@ -63,6 +64,7 @@ class Runner:
         self.summary_day: str | None = None
         self.started: pd.Timestamp | None = None
         self.disconnected_since: pd.Timestamp | None = None
+        self.disconnect_alerted = False
         self.daily_day = None
 
     # ------------------------------------------------------------ meldingen
@@ -245,10 +247,20 @@ class Runner:
         """Eén ronde van 10 s. Apart zodat ze te testen is."""
         self.handle_requests(now)
         ok = self.broker.connected()
-        if ok != self.connected:
-            self.note("fout" if not ok else "info", "verbinding met MT5 weg" if not ok else "verbinding met MT5 terug", now=now)
-            self.connected = ok
+        if not ok and self.connected:                      # net weggevallen: eerst alleen loggen
+            self.note("info", "verbinding met MT5 weg (melding in Discord pas na 2 min)", discord=False, now=now)
+        if ok and not self.connected:                      # terug
+            mins = (now - self.disconnected_since).total_seconds() / 60 if self.disconnected_since is not None else 0
+            self.note("info", f"verbinding met MT5 terug na {mins:.1f} min", discord=False, now=now)
+            if self.disconnect_alerted:                    # alleen als er een alarm uitging, ook 'terug' melden
+                self.discord.send(f"✅ **info** · verbinding met MT5 terug na {mins:.0f} min")
+            self.disconnect_alerted = False
+        self.connected = ok
         self.disconnected_since = None if ok else (self.disconnected_since or now)
+        if not ok and not self.disconnect_alerted and now - self.disconnected_since >= DISCONNECT_ALERT:
+            self.note("fout", f"verbinding met MT5 al {DISCONNECT_ALERT.seconds // 60} min weg "
+                              f"(sinds {self.disconnected_since:%H:%M} server)", now=now)
+            self.disconnect_alerted = True
         if not ok:
             self.write_status(now)
             try:

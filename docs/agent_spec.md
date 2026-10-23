@@ -60,6 +60,8 @@ Commit-bericht: tijd + korte samenvatting. Geen commit als er niets veranderde.
 Naar Discord gaan nog: waakhond (KATSU stil, MT5 weg, verzamelaar faalt), fouten (ook de noodknop), geweigerde
 orders, gevulde en gesloten trades. Signalen, geplaatste/geannuleerde orders, scans en het dagoverzicht staan
 alleen nog in het dashboard. Instelbaar met `[discord] meldingen = [...]` in config.toml.
+- MT5 niet verbonden (besluit Gitchi 23 okt 2026): pas een Discord-melding na **2 minuten** zonder verbinding
+  (korte haperingen staan alleen in het log); na zo'n melding volgt ook "✅ terug na … min".
 
 ## 6. Bouw en tests
 - `katsu/agent/collect.py` (verzamelaar + waakhond), runner schrijft `status.json`, `deals.json`, `vooruittest.json`.
