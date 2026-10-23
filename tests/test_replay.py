@@ -39,5 +39,21 @@ def test_maandagen_alleen_oneven_maanden_en_genoeg_data():
     rng = np.random.default_rng(1)
     mons = pick_mondays(idx, 10, rng)
     assert mons and all(m.dayofweek == 0 and m.month == 3 and m.day <= 14 for m in mons)
+    assert len(mons) == 1                              # maart 2021 heeft 2 kandidaten (1 en 8 maart), maar max. één per maand
     ep = episode_frame(pd.DataFrame(index=idx, data={"x": 0}), mons[0])
     assert ep.index.min() >= mons[0] - pd.Timedelta(days=28) and ep.index.max() < mons[0] + pd.Timedelta(days=12)
+
+
+def test_ronde2_geen_overlap_en_geziene_maanden_uitgesloten():
+    # handberekend: werkdagen 2020-2024; oneven maanden = 30, min 3 uitgesloten = 27 mogelijke maanden
+    idx = pd.date_range("2020-01-01", "2024-12-31 23:59", freq="1min")
+    idx = idx[idx.dayofweek < 5]
+    excl = ("2022-01", "2022-07", "2024-07")
+    mons = pick_mondays(idx, 40, np.random.default_rng(5), exclude_months=excl)
+    assert len(mons) == 27                                           # niet meer dan er maanden zijn
+    assert len({m.strftime("%Y-%m") for m in mons}) == len(mons)     # één per maand
+    assert not {m.strftime("%Y-%m") for m in mons} & set(excl)
+    mons = sorted(mons)
+    for a, b in zip(mons, mons[1:]):
+        # speelvenster van a (12 dagen) ligt volledig vóór de geschiedenis van b (28 dagen): geen enkele overlap
+        assert a + pd.Timedelta(days=12) <= b - pd.Timedelta(days=28)

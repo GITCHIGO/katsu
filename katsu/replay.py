@@ -48,18 +48,28 @@ def decode(blob: bytes) -> tuple[dict, pd.DataFrame]:
     return d, df.round(d["digits"])
 
 
-def pick_mondays(index: pd.DatetimeIndex, n: int, rng: np.random.Generator) -> list[pd.Timestamp]:
-    """Maandagen in oneven maanden 2020–2024 (dag 1–14, niet de eerste week van januari) met volledige data."""
+def pick_mondays(index: pd.DatetimeIndex, n: int, rng: np.random.Generator,
+                 exclude_months: tuple = ()) -> list[pd.Timestamp]:
+    """Maandagen in oneven maanden 2020–2024 (dag 1–14, niet de eerste week van januari) met volledige data.
+
+    Ronde 2 (spec 24 okt 2026): hoogstens één maandag per maand, zodat episodes nooit overlappen (12 dagen vooruit +
+    28 dagen geschiedenis passen tussen twee oneven maanden). `exclude_months` = maanden ("2022-07") die al gezien zijn.
+    """
     days = pd.DatetimeIndex(np.unique(index.normalize()))
     cand = [d for d in days if d.dayofweek == 0 and d.year in range(2020, 2025) and d.month % 2 == 1
-            and d.day <= 14 and not (d.month == 1 and d.day < 8)]
-    ok = []
+            and d.day <= 14 and not (d.month == 1 and d.day < 8) and d.strftime("%Y-%m") not in exclude_months]
+    by_month: dict = {}
     for d in cand:
         fwd = index[(index >= d) & (index < d + pd.Timedelta(days=12))]
         if len(fwd) > 9 * 1300:                      # ~10 handelsdagen aanwezig
-            ok.append(d)
-    pick = rng.choice(len(ok), size=min(n, len(ok)), replace=False)
-    return [ok[i] for i in sorted(pick)]
+            by_month.setdefault(d.strftime("%Y-%m"), []).append(d)
+    months = sorted(by_month)
+    pick = rng.choice(len(months), size=min(n, len(months)), replace=False)
+    out = []
+    for i in sorted(pick):
+        opts = by_month[months[i]]
+        out.append(opts[int(rng.integers(len(opts)))])
+    return out
 
 
 def episode_frame(m1: pd.DataFrame, monday: pd.Timestamp, hist_days: int = 28, fwd_days: int = 12) -> pd.DataFrame:

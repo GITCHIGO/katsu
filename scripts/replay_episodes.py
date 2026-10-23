@@ -13,16 +13,21 @@ from katsu.replay import encode, episode_frame, pick_mondays
 
 SRC = {"EURUSD": "/home/claude/katsu_research/eur_m1_full.pkl", "XAUUSD": "/home/claude/katsu_research/xau_m1_full.pkl"}
 N = 20
+SEED = 20261024                       # ronde 2 (ronde 1: 20261012)
+# ronde 2: maanden die in ronde 1 al gespeeld zijn (docs/replay_spec.md, "Ronde 2")
+# voor beide markten: dezelfde week op EURUSD en goud toont hetzelfde dollarnieuws
+_SEEN = ("2020-05", "2020-11", "2022-01", "2022-07", "2024-07")
+SEEN = {"EURUSD": _SEEN, "XAUUSD": _SEEN}
 
 
 def main(outdir, keyfile):
     os.makedirs(outdir, exist_ok=True)
-    rng = np.random.default_rng(20261012)
+    rng = np.random.default_rng(SEED)
     rows = []
     for sym, f in SRC.items():
         m1 = pd.read_pickle(f)
         m1 = m1[m1.index < "2025-01-01"]
-        mondays = pick_mondays(m1.index, N, rng)
+        mondays = pick_mondays(m1.index, N, rng, exclude_months=SEEN[sym])
         order = rng.permutation(len(mondays))           # nummering niet chronologisch
         for nr, j in enumerate(order, 1):
             mon = mondays[j]

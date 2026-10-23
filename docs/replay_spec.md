@@ -55,3 +55,17 @@ Voor een later model blijft werkregel 6 (vast risico in R) gelden; dat is een ap
 Pagina: `replay/page.html` (+ `replay/sim.js`), gebouwd met `scripts/replay_build.py`; gepubliceerd als artifact
 "KATSU Replay" met db-opslag. Episodes als base64-tekst (`episodes/<id>.txt`). Sleutel episode → datum staat buiten
 de repo (`katsu_research/replay/sleutel.csv`).
+
+## Ronde 2 — reset (24 okt 2026, besluit Gitchi)
+- Gitchi begint opnieuw en neemt de replay vanaf nu ernstig. De 24 trades van ronde 1 (12 okt) zijn **gewist** en tellen
+  niet mee; ook beslissingen, tekeningen en voortgang zijn leeg.
+- **Fout in ronde 1:** de episodes konden overlappen (twee maandagen in dezelfde maand, 2 weken vooruit); 8 paren
+  deelden een week, en de geschiedenis van een episode kon het speelvenster van een andere tonen.
+- **Nieuwe keuze van de weken:** per markt **hoogstens één episode per oneven maand** (maandag op dag 1–14, 12 dagen
+  vooruit, 28 dagen geschiedenis). Zo overlapt geen speelvenster een ander speelvenster of andermans geschiedenis.
+- **Uitgesloten (al gezien in ronde 1), voor beide markten** (zelfde week = zelfde dollarnieuws): mei 2020, nov 2020,
+  jan 2022, jul 2022, jul 2024.
+- Nog steeds 20 episodes per markt (EURUSD, XAUUSD), willekeurig gekozen (seed 20261024), nummering niet
+  chronologisch, oude sleutel bewaard als `katsu_research/replay/sleutel_ronde1.csv`.
+- De even maanden 2020–2024 blijven gereserveerd voor de toets van regels uit deze replay (niet voor de drie
+  bevroren setups; die bewijzen zich op de demo).
