@@ -61,7 +61,8 @@ def stats(df: pd.DataFrame) -> dict:
             "win": float((x > 0).mean()), "zonder_kosten": float(tr["r_free"].mean()),
             "placebo_zk": float(tr["r_placebo_free"].mean()), "totaal": float(x.sum()),
             "per_markt": {MARKETS[k]: [int(len(v)), round(float(v["r_net"].mean()), 3)] for k, v in tr.groupby("markt")},
-            "per_jaar": {k: (int(len(v)), float(v["r_net"].mean())) for k, v in tr.groupby("periode")}}
+            "per_jaar": {k: (int(len(v)), float(v["r_net"].mean()),
+                             clustered_t(v["r_net"].to_numpy(), v["week"].to_numpy())) for k, v in tr.groupby("periode")}}
 
 
 def describe(allowed: dict, order: dict) -> dict:
@@ -69,13 +70,27 @@ def describe(allowed: dict, order: dict) -> dict:
 
 
 def _ok(s, both_years):
-    """Voorwaarden van een zoekstap. v0.9: ≥ 80 trades. v0.9b: ≥ 100 samen, ≥ 40 per jaar, beide jaren positief."""
+    """Voorwaarden van een zoekstap. v0.9: ≥ 80 trades. v0.9b (gecorrigeerd): ≥ 100 samen en ≥ 40 per jaar."""
     if not np.isfinite(s.get("t", np.nan)):
         return False
     if not both_years:
         return s["n"] >= MIN_TRADES
     y = s.get("per_jaar", {})
-    return (s["n"] >= 100 and all(y.get(k, (0, -1))[0] >= 40 and y.get(k, (0, -1))[1] > 0 for k in ("2025", "2026")))
+    return s["n"] >= 100 and all(y.get(k, (0, 0, np.nan))[0] >= 40 for k in ("2025", "2026"))
+
+
+def _score(s, both_years):
+    """v0.9: t over de zoekdata. v0.9b: de zwakste t van de twee jaren."""
+    if not both_years:
+        return s["t"]
+    y = s.get("per_jaar", {})
+    ts = [y.get(k, (0, 0, np.nan))[2] for k in ("2025", "2026")]
+    return min(ts) if all(np.isfinite(ts)) else -np.inf
+
+
+def both_positive(s):
+    y = s.get("per_jaar", {})
+    return all(y.get(k, (0, -1, 0))[1] > 0 for k in ("2025", "2026"))
 
 
 def search(df, order, soort: str, counter: list, periods=("2025",), exclude=()):
@@ -100,8 +115,8 @@ def search(df, order, soort: str, counter: list, periods=("2025",), exclude=()):
         for f, v in options:
             sub = cur[cur[f] != v]
             s = stats(sub); counter[0] += 1
-            better = not np.isfinite(best.get("t", np.nan)) or s["t"] > best["t"] or not _ok(best, both)
-            if _ok(s, both) and better and (cand is None or s["t"] > cand[2]["t"]):
+            if (_ok(s, both) and _score(s, both) > _score(best, both)
+                    and (cand is None or _score(s, both) > _score(cand[2], both))):
                 cand = (f, v, s)
         if cand is None:
             break
@@ -130,14 +145,17 @@ def main_b(folder, out):
     for soort in ("FVG", "IFVG", "AMD", "Zone"):
         allowed, steps, s_zoek = search(df, order, soort, counter, periods=("2025", "2026"), exclude=("uur",))
         sbg = stats(apply(df, order, soort, allowed, "voor_2025"))
-        ok = (_ok(s_zoek, True) and sbg["n"] >= 100 and sbg.get("gem", -9) >= 0
+        ok = (_ok(s_zoek, True) and both_positive(s_zoek) and bool(steps) and sbg["n"] >= 100 and sbg.get("gem", -9) >= 0
               and sbg.get("zonder_kosten", -9) > sbg.get("placebo_zk", 9))
         res[soort] = {"filters": describe(allowed, order), "stappen": steps, "2025_26": s_zoek,
-                      "voor_2025": sbg, "geslaagd": bool(ok)}
-    res["_pogingen"] = counter[0]
+                      "voor_2025": sbg, "beide_jaren_positief": both_positive(s_zoek), "geslaagd": bool(ok)}
+    res["_pogingen"] = counter[0] + PREVIOUS_B
     with open(out, "w") as fh:
         json.dump(res, fh, indent=1, ensure_ascii=False, default=float)
     print(json.dumps(res, indent=1, ensure_ascii=False, default=float))
+
+
+PREVIOUS_B = 278        # pogingen van de eerste (mislukte) v0.9b-run
 
 
 def main(folder, out):

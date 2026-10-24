@@ -38,3 +38,9 @@ mag wel, een los uur niet). Vastgelegd vóór de run.
   2020–2024). Een kandidaat slaagt als hij daar ≥ 100 trades heeft en gemiddeld **≥ 0R** na kosten, en zonder kosten
   beter dan de placebo. Wat slaagt → eindtest even maanden 2020–2024 (één keer), daarna demo.
 - Wat faalt: noteren; geen nieuwe zoekronde op 2025–26.
+- **Correctie vóór een bruikbare uitslag (24 okt 2026):** de eerste run van v0.9b zette geen enkele stap. De regel
+  eiste dat élke tussenstap al in beide jaren positief was; vanaf een negatieve basis lukt dat met één chip nooit.
+  Gecorrigeerd: elke stap moet ≥ 100 trades samen en ≥ 40 per jaar houden, en kiest de chip met de hoogste
+  **zwakste t van de twee jaren** (min(t 2025, t 2026)) — zo stuurt het zoeken naar "goed in beide jaren".
+  De eindkandidaat moet in beide jaren positief zijn, anders telt de zoektocht als "geen kandidaat".
+  De pogingen van de mislukte run tellen mee.
