@@ -52,6 +52,8 @@ class Instrument:
     max_hold_days: float | None = None    # maximale looptijd in kalenderdagen; daarna sluiten op de close
     swap_pct_long: float | None = None    # swap als % van de prijs per jaar (long); vervangt `swap` als gezet
     swap_pct_short: float | None = None   # idem short (None = zelfde als long)
+    close_at_min: int | None = None       # spec v0.8: sluiten om deze servertijd (minuten na middernacht) op de dag
+                                          # van de vulling; orders vervallen dan ook. None = uit
 
 
 # Vastgelegde instellingen per markt (spec §2 en §5).
@@ -83,6 +85,8 @@ class OrderPlan:
     tp_price: float | None = None     # vaste TP-prijs (spec v0.4: oude high); None = rr × risk
     cancel_price: float | None = None # limiet/stop wordt geannuleerd als de koers dit niveau eerst raakt
     max_rr: float | None = None       # met tp_price: TP nooit verder dan max_rr × risk (het dichtste telt)
+    min_risk: float | None = None     # spec v0.8: minimale SL-afstand in prijs; kleiner -> SL schuift naar dit minimum
+    min_rr: float | None = None       # spec v0.8: ligt de TP dichter dan min_rr × risk -> geen trade ("tp_te_klein")
 
 
 @dataclass
@@ -173,6 +177,9 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     else:
         fi = None
         end_t = plan.valid_until
+        if ins.close_at_min is not None:
+            cut = plan.signal_time.normalize() + pd.Timedelta(minutes=ins.close_at_min)
+            end_t = min(end_t, cut) if end_t is not None else cut
         j = i
         while j < len(d.t) and d.t[j] < end_t:
             ask_o, ask_l, ask_h = d.o[j] + d.sp[j], d.lo[j] + d.sp[j], d.h[j] + d.sp[j]
@@ -201,6 +208,9 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     buffer = d.sp[fi] + ins.sl_atr_buffer * plan.atr
     sl = _round_tick(plan.anchor - s * buffer, ins.tick)
     risk = s * (fill - sl)
+    if plan.min_risk is not None and risk < plan.min_risk:
+        sl = _round_tick(fill - s * plan.min_risk, ins.tick)
+        risk = s * (fill - sl)
     if risk < ins.min_sl_atr * plan.atr:
         return Trade(plan.direction, plan.signal_time, "sl_te_klein", d.t[fi], fill, sl, None, risk)
     if plan.tp_price is not None:
@@ -210,6 +220,8 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
         tp = _round_tick(tp, ins.tick)
         if s * (tp - fill) <= 0:                        # TP ligt niet voorbij de vulling: geen trade
             return Trade(plan.direction, plan.signal_time, "tp_ongeldig", d.t[fi], fill, sl, tp, risk)
+        if plan.min_rr is not None and s * (tp - fill) < plan.min_rr * risk - 1e-12:
+            return Trade(plan.direction, plan.signal_time, "tp_te_klein", d.t[fi], fill, sl, tp, risk)
     else:
         tp = _round_tick(fill + s * ins.rr * risk, ins.tick)
 
@@ -217,6 +229,11 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
     if ins.close_eod:
         day_end = (d.t[fi] + pd.Timedelta(days=1)).normalize()    # 00:00 servertijd volgende dag
         end = int(d.t.searchsorted(day_end))
+    elif ins.close_at_min is not None:
+        cut = d.t[fi].normalize() + pd.Timedelta(minutes=ins.close_at_min)
+        if d.t[fi] >= cut:                                         # gevuld na het sluituur: niet toegelaten
+            return Trade(plan.direction, plan.signal_time, "niet_gevuld")
+        end = int(d.t.searchsorted(cut))                           # laatste candle = die vóór het sluituur
     else:
         end = len(d.t)
     if ins.max_hold_days is not None:
@@ -248,7 +265,7 @@ def simulate(plan: OrderPlan, d: M1, ins: Instrument) -> Trade:
         k = end - 1                                                 # laatste candle (dag of data)
         close = d.c[k] if long else d.c[k] + d.sp[k]
         exit_price = close - s * slip
-        if ins.close_eod:
+        if ins.close_eod or (ins.close_at_min is not None and end < len(d.t)):
             reason = "EINDE_DAG"
         elif end < len(d.t):
             reason = "MAX_DUUR"

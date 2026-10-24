@@ -67,5 +67,5 @@ de repo (`katsu_research/replay/sleutel.csv`).
   jan 2022, jul 2022, jul 2024.
 - Nog steeds 20 episodes per markt (EURUSD, XAUUSD), willekeurig gekozen (seed 20261024), nummering niet
   chronologisch, oude sleutel bewaard als `katsu_research/replay/sleutel_ronde1.csv`.
-- De even maanden 2020–2024 blijven gereserveerd voor de toets van regels uit deze replay (niet voor de drie
-  bevroren setups; die bewijzen zich op de demo).
+- ~~De even maanden 2020–2024 blijven gereserveerd voor de replay~~ — gewijzigd 24 okt 2026 (besluit Gitchi): de even
+  maanden zijn de eindtest van spec v0.8. Regels uit de replay toetsen zich vooruit op de demo.
