@@ -38,6 +38,27 @@ def test_greedy_zet_de_slechte_chip_uit():
 def test_2026_beinvloedt_de_keuze_niet():
     df, order = toy()
     d26 = df.copy(); d26["periode"] = "2026"; d26["r_net"] = -d26["r_net"]   # 2026 precies omgekeerd
+    d26[["fill_time", "exit_time"]] += 1e6
     a1, _, _ = Z.search(df, order, "FVG", [0])
     a2, _, _ = Z.search(pd.concat([df, d26], ignore_index=True), order, "FVG", [0])
     assert a1 == a2
+
+
+def test_v09b_uur_uitgesloten_en_beide_jaren_positief():
+    df, order = toy()
+    df["uur"] = np.where(df["sessie"] == 0, 0, 1)            # 'uur' zou dezelfde scheiding kunnen maken
+    order["uur"] = ["9", "10"]
+    d26 = df.copy(); d26["periode"] = "2026"; d26[["fill_time", "exit_time"]] += 1e6   # later in de tijd
+    both = pd.concat([df, d26], ignore_index=True)
+    allowed, _, best = Z.search(both, order, "FVG", [0], periods=("2025", "2026"), exclude=("uur",))
+    assert "uur" not in allowed and allowed["sessie"] == {0}
+    assert best["per_jaar"]["2025"][1] > 0 and best["per_jaar"]["2026"][1] > 0
+
+
+def test_v09b_stap_geweigerd_als_een_jaar_negatief_wordt():
+    # In 2026 is 'Londen' slecht en 'Azië' goed: de stap "Azië uit" maakt 2026 negatief -> niet toegelaten.
+    df, order = toy()
+    d26 = df.copy(); d26["periode"] = "2026"; d26["r_net"] = np.where(d26["sessie"] == 0, -1.0, 1.2)
+    d26[["fill_time", "exit_time"]] += 1e6
+    allowed, _, _ = Z.search(pd.concat([df, d26], ignore_index=True), order, "FVG", [0], periods=("2025", "2026"))
+    assert allowed.get("sessie", {0, 1}) == {0, 1}

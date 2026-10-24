@@ -60,21 +60,34 @@ def stats(df: pd.DataFrame) -> dict:
     return {"n": int(len(tr)), "gem": float(x.mean()), "t": clustered_t(x, tr["week"].to_numpy()),
             "win": float((x > 0).mean()), "zonder_kosten": float(tr["r_free"].mean()),
             "placebo_zk": float(tr["r_placebo_free"].mean()), "totaal": float(x.sum()),
-            "per_markt": {MARKETS[k]: [int(len(v)), round(float(v["r_net"].mean()), 3)] for k, v in tr.groupby("markt")}}
+            "per_markt": {MARKETS[k]: [int(len(v)), round(float(v["r_net"].mean()), 3)] for k, v in tr.groupby("markt")},
+            "per_jaar": {k: (int(len(v)), float(v["r_net"].mean())) for k, v in tr.groupby("periode")}}
 
 
 def describe(allowed: dict, order: dict) -> dict:
     return {f: [order[f][c] for c in sorted(v)] for f, v in allowed.items()}
 
 
-def search(df, order, soort: str, counter: list):
-    """Greedy: elke stap de 'chip uit' met de hoogste t op 2025 (≥ MIN_TRADES trades), max MAX_STEPS stappen."""
-    base = df[(df["soort"] == order["soort"].index(soort)) & (df["periode"] == "2025")]
+def _ok(s, both_years):
+    """Voorwaarden van een zoekstap. v0.9: ≥ 80 trades. v0.9b: ≥ 100 samen, ≥ 40 per jaar, beide jaren positief."""
+    if not np.isfinite(s.get("t", np.nan)):
+        return False
+    if not both_years:
+        return s["n"] >= MIN_TRADES
+    y = s.get("per_jaar", {})
+    return (s["n"] >= 100 and all(y.get(k, (0, -1))[0] >= 40 and y.get(k, (0, -1))[1] > 0 for k in ("2025", "2026")))
+
+
+def search(df, order, soort: str, counter: list, periods=("2025",), exclude=()):
+    """Greedy: elke stap de 'chip uit' met de hoogste t op de zoekdata, max MAX_STEPS stappen.
+    periods = zoekdata; exclude = kenmerken die niet gebruikt mogen worden (v0.9b: "uur")."""
+    both = len(periods) > 1
+    base = df[(df["soort"] == order["soort"].index(soort)) & (df["periode"].isin(periods))]
     allowed = {"markt": set(range(len(MARKETS)))}
     cur = base
     best = stats(cur); counter[0] += 1
     steps = []
-    feats = [f for f in order if f not in SKIP]
+    feats = [f for f in order if f not in SKIP and f not in exclude]
     for _ in range(MAX_STEPS):
         cand = None
         options = [("markt", k) for k in sorted(allowed["markt"])] if len(allowed["markt"]) > 1 else []
@@ -87,7 +100,8 @@ def search(df, order, soort: str, counter: list):
         for f, v in options:
             sub = cur[cur[f] != v]
             s = stats(sub); counter[0] += 1
-            if s["n"] >= MIN_TRADES and np.isfinite(s["t"]) and s["t"] > best["t"] and (cand is None or s["t"] > cand[2]["t"]):
+            better = not np.isfinite(best.get("t", np.nan)) or s["t"] > best["t"] or not _ok(best, both)
+            if _ok(s, both) and better and (cand is None or s["t"] > cand[2]["t"]):
                 cand = (f, v, s)
         if cand is None:
             break
@@ -96,15 +110,34 @@ def search(df, order, soort: str, counter: list):
         allowed[f] = allowed[f] - {v}
         cur = cur[cur[f] != v]
         best = s
-        steps.append(f"{f} ≠ {order[f][v]}  → 2025: n {s['n']}, gem {s['gem']:+.3f}R, t {s['t']:.2f}")
+        steps.append(f"{f} ≠ {order[f][v]}  → zoekdata: n {s['n']}, gem {s['gem']:+.3f}R, t {s['t']:.2f}")
     return allowed, steps, best
 
 
 def apply(df, order, soort, allowed, periode):
-    sub = df[(df["soort"] == order["soort"].index(soort)) & (df["periode"] == periode)]
+    periodes = periode if isinstance(periode, (list, tuple)) else [periode]
+    sub = df[(df["soort"] == order["soort"].index(soort)) & (df["periode"].isin(periodes))]
     for f, vals in allowed.items():
         sub = sub[sub[f].isin(list(vals))]
     return sub
+
+
+def main_b(folder, out):
+    """v0.9b: zoeken op 2025 + 2026 samen (beide jaren positief), zonder "uur"; controle = vóór 2025."""
+    df, order = load(folder)
+    counter = [0]
+    res = {}
+    for soort in ("FVG", "IFVG", "AMD", "Zone"):
+        allowed, steps, s_zoek = search(df, order, soort, counter, periods=("2025", "2026"), exclude=("uur",))
+        sbg = stats(apply(df, order, soort, allowed, "voor_2025"))
+        ok = (_ok(s_zoek, True) and sbg["n"] >= 100 and sbg.get("gem", -9) >= 0
+              and sbg.get("zonder_kosten", -9) > sbg.get("placebo_zk", 9))
+        res[soort] = {"filters": describe(allowed, order), "stappen": steps, "2025_26": s_zoek,
+                      "voor_2025": sbg, "geslaagd": bool(ok)}
+    res["_pogingen"] = counter[0]
+    with open(out, "w") as fh:
+        json.dump(res, fh, indent=1, ensure_ascii=False, default=float)
+    print(json.dumps(res, indent=1, ensure_ascii=False, default=float))
 
 
 def main(folder, out):
@@ -126,4 +159,4 @@ def main(folder, out):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    (main_b if len(sys.argv) > 3 and sys.argv[3] == "b" else main)(*sys.argv[1:3])

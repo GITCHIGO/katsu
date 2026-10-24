@@ -26,3 +26,15 @@ tweede voorwaarde.
 - Slaagt er een: bevriezen, met één eindtest op de even maanden 2020–2024 (nog nooit bekeken; spec v0.8 haalde
   de poort niet, dus die zijn nog vrij). Daarna demo, naast de drie bevroren setups.
 - Slaagt er geen: noteren. Niet opnieuw zoeken op 2025 met andere instellingen (dan wordt 2026 ook zoekdata).
+
+## v0.9b — zoeken op 2025 + 2026 samen, zonder losse uren (24 okt 2026, wens Gitchi)
+Wens Gitchi: "combinaties die positief waren in 2025 en 2026, maar niet met uren werken" (een sessie als "nacht"
+mag wel, een los uur niet). Vastgelegd vóór de run.
+- **Zoekdata:** 2025 én 1 jan – 9 okt 2026 samen. Het kenmerk **"uur" is uitgesloten**; sessie, Silver Bullet-venster
+  en weekdag blijven mogelijk.
+- **Zoekregel:** zoals §2 (greedy "chip uit", max. 8 stappen, 4 zoektochten FVG/IFVG/AMD/Zone), op de hoogste t over
+  2025–26, met als voorwaarden ≥ 100 trades samen, ≥ 40 per jaar, en **gemiddeld positief in 2025 én in 2026**.
+- **Controle (nooit gezien tijdens het zoeken):** de dashboard-data vóór 2025 (2010–2019 en oneven maanden
+  2020–2024). Een kandidaat slaagt als hij daar ≥ 100 trades heeft en gemiddeld **≥ 0R** na kosten, en zonder kosten
+  beter dan de placebo. Wat slaagt → eindtest even maanden 2020–2024 (één keer), daarna demo.
+- Wat faalt: noteren; geen nieuwe zoekronde op 2025–26.
