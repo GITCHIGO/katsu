@@ -15,6 +15,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
+from katsu.live.fsutil import replace_retry
 
 MAX_LEN = 2000
 
@@ -38,7 +39,7 @@ def add_question(path: str, text: str, now: datetime | None = None) -> dict | No
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=1)
-    os.replace(tmp, path)
+    replace_retry(tmp, path)
     return q
 
 

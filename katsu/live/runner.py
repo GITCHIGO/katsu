@@ -30,6 +30,7 @@ from katsu.live.report import control, results
 from katsu.live.scan import HISTORY_MONTHS, STEP, closed_bars, scan
 from katsu.live.web import Snapshot, make_app
 from scripts.dashboard_build import INS
+from katsu.live.fsutil import replace_retry
 
 BARS_COUNT = 52_000            # ±24 maanden M15 (+ marge); MT5 'Max. bars in chart' moet hoger staan
 TICK_S = 10
@@ -305,7 +306,7 @@ def _write_json(path, obj):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(obj, fh, ensure_ascii=False, indent=1, default=str)
-    os.replace(tmp, path)
+    replace_retry(tmp, path)
 
 
 def serve(runner: Runner):

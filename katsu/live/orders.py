@@ -28,6 +28,7 @@ import pandas as pd
 from katsu.execution import M1
 from katsu.live.levels import sign, sl_price, tp_price, zone_tp_plan
 from katsu.live.scan import SETUPS, SHORT, STEP, Signal
+from katsu.live.fsutil import replace_retry
 
 ACTIVE = ("wacht", "geplaatst", "gevuld")
 PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "XAUUSD": 0.1}
@@ -137,7 +138,7 @@ class Manager:
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump({"orders": [asdict(o) for o in self.orders.values()], "paused": self.paused,
                        "last_scan": self.last_scan}, fh, ensure_ascii=False, indent=1)
-        os.replace(tmp, self.store)
+        replace_retry(tmp, self.store)
 
     def load(self):
         with open(self.store, encoding="utf-8") as fh:

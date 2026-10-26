@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from katsu.live.config import load_config, paths
 from katsu.live.notify import Discord
+from katsu.live.fsutil import replace_retry
 
 STIL_NA = 10 * 60          # s zonder hartslag → KATSU staat stil
 MT5_WEG_NA = 10 * 60       # s niet verbonden → melding
@@ -41,7 +42,7 @@ def _write(path, obj):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(obj, fh, ensure_ascii=False, indent=1, default=str)
-    os.replace(tmp, path)
+    replace_retry(tmp, path)
 
 
 def _iso(ts):

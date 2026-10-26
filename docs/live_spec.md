@@ -83,6 +83,8 @@ Werkt op gsm (onderbalk met 4 tabs) en desktop.
   posities in MT5 (vulling of sluiting tijdens de stilstand wordt opgepikt). Onbekende orders met een KATSU-magic
   worden gemeld, niet aangeraakt.
 - Een fout in één ronde stopt het programma niet (log + Discord).
+- Bestanden (status, orders, deals, vragen) worden vervangen met tot 20 nieuwe pogingen binnen ±2 s als Windows
+  "Access is denied" geeft omdat de waakhond of verzamelaar het bestand net leest (fout van 26 okt 2026, 04:33 server).
 - Kill-switch op het dashboard (met bevestiging).
 
 ## 7. Bouwvolgorde en tests (status)
