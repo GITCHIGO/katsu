@@ -212,3 +212,20 @@ def test_dashboard_global_limit_over_many_ips(tmp_path):
     finally:
         W.time.sleep = old
     assert r.status_code == 429 and "24 uur" in r.get_data(as_text=True)
+
+
+def test_resultaten_standaard_alles_en_gelogde_signalen_alleen_in_stand_loggen(client):
+    c, snap = client
+    c.post("/login", data={"pw": "een-lang-wachtwoord"})
+    oud = {"id": "T1-GBP-1", "setup": "Test #1 (FVG)", "market": "GBPUSD", "direction": "SHORT", "state": "gesloten",
+           "exit_time": "2026-10-29 12:20:35", "fill_px": 1.33258, "exit_px": 1.33029, "exit_reason": "TP",
+           "r_net": 1.95, "net": 19.91, "pips": 22.9, "t_sig": "2026-10-29 06:15:00"}
+    log = {"id": "ZONE-GBP-1", "key": "k", "setup": "Zone GBPUSD", "market": "GBPUSD", "direction": "LONG",
+           "state": "log", "t_sig": "2026-10-28 14:45:00", "kind": "limit", "limit": 1.32811, "sl": 1.32736, "tp": None,
+           "valid_until": None, "valid_bars": None, "lot": 0.1}
+    snap.set({**snap.get(), "orders": [oud, log], "results_all": results([oud]), "results_month": results([])})
+    page = c.get("/resultaten").get_data(as_text=True)
+    assert "+1.95R" in page or "+1,95R" in page                     # oktober-trade staat er standaard bij
+    assert "Laatste signalen" not in c.get("/").get_data(as_text=True)    # stand orders: geen gelogde signalen
+    snap.set({**snap.get(), "mode": "loggen"})
+    assert "Laatste signalen" in c.get("/").get_data(as_text=True)

@@ -398,7 +398,8 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: di
         live = s.get("live_r", {})
         running = [o for o in orders if o["state"] == "gevuld"]
         pending = [o for o in orders if o["state"] in ("geplaatst", "wacht")]
-        recent_log = [o for o in orders if o["state"] == "log"][-5:][::-1]
+        # gelogde signalen alleen in de stand loggen (stand orders: verwarrend, besluit Gitchi 5 nov 2026)
+        recent_log = [o for o in orders if o["state"] == "log"][-5:][::-1] if s.get("mode") == "loggen" else []
         hero = (f"<section class='card hero'><div class='row'><div><div class='k'>netto deze maand</div>"
                 f"<div class='big {tone(a.get('netto'))}'>{fM(a.get('netto'), cur)}</div></div>"
                 f"<div class='mono k' style='text-align:right'>{fR(a.get('totaal_R'), 1)}<br>{a.get('trades', 0)} trades · {fP(a.get('winrate'))}</div></div>"
@@ -423,11 +424,11 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: di
     def resultaten():
         s = snap.get()
         cur = s.get("cur", "€")
-        per = request.args.get("p", "maand")
+        per = request.args.get("p", "alles")                 # standaard alles (besluit Gitchi 5 nov 2026)
         r = (s.get("results_month") if per == "maand" else s.get("results_all")) or {}
         a = r.get("algemeen") or {}
         chips = ("<div class='chips'>" + "".join(f"<a class='chip {'on' if per == k else ''}' href='?p={k}'>{lab}</a>"
-                                                 for k, lab in (("maand", "Deze maand"), ("alles", "Alles"))) + "</div>")
+                                                 for k, lab in (("alles", "Alles"), ("maand", "Deze maand"))) + "</div>")
         kp = lambda v, k, c="": f"<div class='kpi'><span class='v {c}'>{v}</span><span class='k'>{k}</span></div>"
         kpis = ("<section class='kpis'>" + kp(a.get("trades", 0), "trades") + kp(fP(a.get("winrate")), "winrate")
                 + kp(fR(a.get("gem_R")), "gem. per trade", tone(a.get("gem_R"))) + kp(fR(a.get("totaal_R"), 1), "totaal", tone(a.get("totaal_R")))

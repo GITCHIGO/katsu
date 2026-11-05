@@ -66,7 +66,8 @@ max. 5 foute pogingen per 15 min per IP en 20 per 24 u in totaal, sessiecookie (
 Werkt op gsm (onderbalk met 4 tabs) en desktop.
 - **Nu:** status (verbonden, demo/live, laatste en volgende scan), netto deze maand + curve, lopende trades met live R
   (balk van SL naar TP), klaarstaande en wachtende orders, per setup deze maand. Ververst elke 20 s.
-- **Resultaten:** deze maand / alles; trades, winrate, gem. R, totaal R, totale winst, totaal verlies, netto, lopend;
+  Signalen "alleen gelogd" staan hier alleen in de stand loggen (besluit Gitchi 5 nov 2026); ze blijven op Controle en Log.
+- **Resultaten:** alles (standaard, besluit Gitchi 5 nov 2026) / deze maand; trades, winrate, gem. R, totaal R, totale winst, totaal verlies, netto, lopend;
   per setup en per setup × pair (ook pips); curve per setup (R); lijst van trades. Bedragen = echte MT5-cijfers
   (winst + commissie + swap) in de rekeningmunt; R = netto / bedrag op het spel bij de vulling (MT5 `order_calc_profit`).
 - **Controle (werkregel 5):** elke trade backtest ↔ MT5 naast elkaar (vulprijs, slippage in pips, uitkomst, R,
