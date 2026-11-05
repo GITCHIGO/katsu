@@ -229,3 +229,15 @@ def test_resultaten_standaard_alles_en_gelogde_signalen_alleen_in_stand_loggen(c
     assert "Laatste signalen" not in c.get("/").get_data(as_text=True)    # stand orders: geen gelogde signalen
     snap.set({**snap.get(), "mode": "loggen"})
     assert "Laatste signalen" in c.get("/").get_data(as_text=True)
+
+
+def test_nu_toont_netto_totaal_niet_deze_maand(client):
+    c, snap = client
+    c.post("/login", data={"pw": "een-lang-wachtwoord"})
+    okt = {"id": "a", "setup": "Test #1 (FVG)", "market": "GBPUSD", "direction": "SHORT", "state": "gesloten",
+           "exit_time": "2026-10-29 12:20:35", "r_net": 1.95, "net": 19.91, "pips": 22.9}
+    nov = {**okt, "id": "b", "exit_time": "2026-11-04 07:51:45", "r_net": 0.65, "net": 70.45}
+    snap.set({**snap.get(), "orders": [okt, nov], "results_all": results([okt, nov]), "results_month": results([nov])})
+    page = c.get("/").get_data(as_text=True)
+    assert "netto totaal" in page and "netto deze maand" not in page
+    assert "90.36" in page or "90,36" in page                       # 19,91 + 70,45 = 90,36 (= demo-saldo − 5.000)

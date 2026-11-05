@@ -393,14 +393,14 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: di
         s = snap.get()
         cur = s.get("cur", "€")
         orders = s.get("orders", [])
-        month = s.get("results_month") or {}
+        month = s.get("results_all") or {}                 # totaal sinds de start (besluit Gitchi 5 nov 2026)
         a = month.get("algemeen") or {}
         live = s.get("live_r", {})
         running = [o for o in orders if o["state"] == "gevuld"]
         pending = [o for o in orders if o["state"] in ("geplaatst", "wacht")]
         # gelogde signalen alleen in de stand loggen (stand orders: verwarrend, besluit Gitchi 5 nov 2026)
         recent_log = [o for o in orders if o["state"] == "log"][-5:][::-1] if s.get("mode") == "loggen" else []
-        hero = (f"<section class='card hero'><div class='row'><div><div class='k'>netto deze maand</div>"
+        hero = (f"<section class='card hero'><div class='row'><div><div class='k'>netto totaal</div>"
                 f"<div class='big {tone(a.get('netto'))}'>{fM(a.get('netto'), cur)}</div></div>"
                 f"<div class='mono k' style='text-align:right'>{fR(a.get('totaal_R'), 1)}<br>{a.get('trades', 0)} trades · {fP(a.get('winrate'))}</div></div>"
                 f"{spark(_merge_curves(month.get('setups', {})))}</section>")
