@@ -72,7 +72,8 @@ Werkt op gsm (onderbalk met 4 tabs) en desktop.
   (winst + commissie + swap) in de rekeningmunt; R = netto / bedrag op het spel bij de vulling (MT5 `order_calc_profit`).
 - **Controle (werkregel 5):** elke trade backtest ↔ MT5 naast elkaar (vulprijs, slippage in pips, uitkomst, R,
   commissie, swap) en signalen backtest ↔ live. **Gelijk** = in beide, zelfde uitkomst (TP / SL / tijd) en < 0,25R
-  verschil. Overeenkomst = gelijk / alle trades. Doel ≥ 90 % op de eerste 20 trades; daaronder: niets verder bouwen.
+  verschil. Overeenkomst = gelijk / alle trades. Signalen uit de stand loggen (geen echte order mogelijk) staan in de
+  lijst als "stand loggen (telt niet mee)" en tellen niet mee (besluit Gitchi 6 nov 2026). Doel ≥ 90 % op de eerste 20 trades; daaronder: niets verder bouwen.
 - **Log:** alle scans, signalen, orders, geblokkeerde en gemiste signalen, fouten (werkregel 8). Bestanden:
   `C:\katsu\data\log\<datum>.jsonl`.
 

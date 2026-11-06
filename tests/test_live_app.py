@@ -241,3 +241,27 @@ def test_nu_toont_netto_totaal_niet_deze_maand(client):
     page = c.get("/").get_data(as_text=True)
     assert "netto totaal" in page and "netto deze maand" not in page
     assert "90.36" in page or "90,36" in page                       # 19,91 + 70,45 = 90,36 (= demo-saldo − 5.000)
+
+
+def test_control_gelogde_signalen_tellen_niet_mee():
+    # Zelfde 3 backtest-trades; trade 3 hoort bij een signaal uit de stand loggen (state "log") -> telt niet mee.
+    rows = pd.DataFrame([bt_row("FVG", "2026-10-21 10:15", 1.101, "TP", 1.9),
+                         bt_row("FVG", "2026-10-21 14:15", 1.1012, "SL", -1.05, limit=1.1012),
+                         bt_row("FVG", "2026-10-22 09:00", 1.1015, "SL", -1.05, limit=1.1015)])
+    import katsu.live.report as R
+    old = R.preset_mask
+    R.preset_mask = lambda df, name: np.full(len(df), name == "Test #1 (FVG)")
+    try:
+        from katsu.live.scan import signal_from_row
+        k = [signal_from_row(r, "Test #1 (FVG)").key for _, r in rows.iterrows()]
+        live = [{"key": k[0], "t_sig": "2026-10-21 10:15", "state": "gesloten", "fill_px": 1.10102, "exit_reason": "TP",
+                 "r_net": 1.80, "commission": -0.7, "swap": 0.0},
+                {"key": k[1], "t_sig": "2026-10-21 14:15", "state": "gesloten", "fill_px": 1.1012, "exit_reason": "TP",
+                 "r_net": 1.9, "commission": -0.7, "swap": 0.0},
+                {"key": k[2], "t_sig": "2026-10-22 09:00", "state": "log", "fill_px": None}]
+        c = control(live, {}, pd.Timestamp("2026-10-21"), lambda b, m, g: rows,
+                    lambda df, name: df if name == "Test #1 (FVG)" else df.iloc[0:0])
+    finally:
+        R.preset_mask = old
+    assert [t["status"] for t in c["trades"]] == ["gelijk", "verschil: uitkomst SL vs TP", R.LOG_STATUS]
+    assert c["n_trades"] == 2 and c["n_gelijk"] == 1 and c["overeenkomst"] == pytest.approx(1 / 2)   # was 1/3

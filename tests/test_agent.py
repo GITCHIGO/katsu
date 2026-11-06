@@ -273,3 +273,19 @@ def test_agent_next_run_and_status(tmp_path):
     assert AB.last_status(str(tmp_path)) == ("2026-10-22", "Status: LET OP")
     svg = AB.avatar_svg(40)
     assert svg.startswith("<svg") and "<path d='M" in svg and "<text" not in svg      # geen font nodig
+
+
+def test_export_bars_laatste_14_dagen(tmp_path):
+    from katsu.agent.collect import export_bars
+    src, dst = tmp_path / "bars", tmp_path / "repo" / "bars"
+    src.mkdir()
+    idx = pd.date_range("2026-10-01", "2026-11-05 23:45", freq="15min")
+    b = pd.DataFrame({"open": 1.1, "high": 1.1002, "low": 1.0999, "close": 1.1001, "tickvol": 10, "spread": 2}, index=idx)
+    b.to_pickle(src / "EURUSD_M15_live.pkl")
+    (src / "kapot_M15_live.pkl").write_text("geen pickle")              # wordt overgeslagen, geen fout
+    assert export_bars(str(src), str(dst), NOW) == ["bars/EURUSD_M15.csv"]
+    back = pd.read_csv(dst / "EURUSD_M15.csv", index_col=0, parse_dates=True)
+    assert back.index.min() == pd.Timestamp("2026-10-22 23:45")             # 5 nov 23:45 − 14 dagen
+    assert back.index.max() == idx.max() and len(back) == 14 * 96 + 1
+    assert back["close"].iloc[0] == pytest.approx(1.1001)
+    assert export_bars(str(tmp_path / "bestaat-niet"), str(dst), NOW) == []

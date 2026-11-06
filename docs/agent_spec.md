@@ -22,6 +22,8 @@ Waarom zo: KATSU zelf blijft vaste code (werkregel 3). De AI kijkt mee en oordee
 - `deals.json` — volledige MT5-accounthistoriek sinds de start (ook trades met de hand of van een ander programma).
 - `log/<datum>.jsonl` — het logboek van KATSU (laatste 30 dagen).
 - `vps.json` — schijfruimte, laatste hartslag, toestand van de waakhond.
+- `bars/<PAIR>_M15.csv` — M15-candles van MT5 (servertijd) van de laatste 14 dagen, om verschillen backtest ↔ MT5 na
+  te kijken (besluit Gitchi 6 nov 2026). Alleen lezen; verandert niets aan KATSU.
 - Nooit: `config.toml` of andere geheimen.
 Commit-bericht: tijd + korte samenvatting. Geen commit als er niets veranderde.
 

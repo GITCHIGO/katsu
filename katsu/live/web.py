@@ -473,7 +473,7 @@ def make_app(snap: Snapshot, password: str, secret: str, logbook=None, agent: di
         rows = ""
         for t in c.get("trades", []):
             st = t["status"]
-            cl = "pos" if st.startswith("gelijk") else "neg"
+            cl = "pos" if st.startswith("gelijk") else ("" if st.startswith("stand loggen") else "neg")
             m = t["markt"]
             slip = "—" if t["slippage_pips"] is None else f"{t['slippage_pips']:+.1f}"
             com = "—" if t["commissie"] is None else f"{t['commissie']:.2f}"

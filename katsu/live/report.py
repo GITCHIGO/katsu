@@ -67,6 +67,9 @@ def _exit_kind(x):
     return "tijd" if x in TIME_EXIT else x
 
 
+LOG_STATUS = "stand loggen (telt niet mee)"
+
+
 def control(orders: list[dict], bars_by_market: dict, start: pd.Timestamp, rows_for=None, setup_trades=None) -> dict:
     if rows_for is None or setup_trades is None:
         from scripts.vooruittest import rows_for, setup_trades
@@ -119,11 +122,15 @@ def control(orders: list[dict], bars_by_market: dict, start: pd.Timestamp, rows_
                 row["status"] = "verschil: R"
             else:
                 row["status"] = "gelijk"
+        elif o is None and live.get(k, {}).get("state") == "log":
+            # signaal uit de stand loggen: er kón geen echte order zijn -> telt niet mee (besluit Gitchi 6 nov 2026)
+            row["status"] = LOG_STATUS
         else:
             row["status"] = "alleen backtest" if o is None else "alleen live"
         rows.append(row)
     res["trades"] = rows
-    res["n_trades"] = len(rows)
-    res["n_gelijk"] = sum(r["status"].startswith("gelijk") for r in rows)
-    res["overeenkomst"] = (res["n_gelijk"] / len(rows)) if rows else None
+    counted = [r for r in rows if r["status"] != LOG_STATUS]
+    res["n_trades"] = len(counted)
+    res["n_gelijk"] = sum(r["status"].startswith("gelijk") for r in counted)
+    res["overeenkomst"] = (res["n_gelijk"] / len(counted)) if counted else None
     return res

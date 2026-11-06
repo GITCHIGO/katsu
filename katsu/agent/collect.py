@@ -100,6 +100,35 @@ def _git(repo, *args, check=True):
     return subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, check=check)
 
 
+BARS_DAGEN = 14          # M15-candles van de laatste 14 dagen mee (besluit Gitchi 6 nov 2026): controle nakijken
+
+
+def export_bars(src_dir: str, dst_dir: str, now: float, days: int = BARS_DAGEN) -> list[str]:
+    """M15-candles van de runner (<PAIR>_M15_live.pkl, servertijd) -> bars/<PAIR>_M15.csv, laatste `days` dagen.
+    Alleen lezen; een kapot of ontbrekend bestand slaat dat pair over (de verzamelaar faalt er niet op)."""
+    out = []
+    if not os.path.isdir(src_dir):
+        return out
+    import pandas as pd
+    os.makedirs(dst_dir, exist_ok=True)
+    for f in sorted(os.listdir(src_dir)):
+        if not f.endswith("_M15_live.pkl"):
+            continue
+        try:
+            b = pd.read_pickle(os.path.join(src_dir, f))
+        except Exception:
+            continue
+        if len(b) == 0:
+            continue
+        b = b[b.index >= b.index.max() - pd.Timedelta(days=days)]
+        name = f.replace("_M15_live.pkl", "_M15.csv")
+        tmp = os.path.join(dst_dir, name + ".tmp")
+        b.to_csv(tmp, index_label="tijd_server", float_format="%.5f")
+        replace_retry(tmp, os.path.join(dst_dir, name))
+        out.append("bars/" + name)
+    return out
+
+
 def gather(cfg, now: float | None = None) -> list[str]:
     """Kopieert alles naar de map van de privé-repo. Geeft de lijst gekopieerde bestanden."""
     p = paths(cfg)
@@ -126,6 +155,7 @@ def gather(cfg, now: float | None = None) -> list[str]:
     for f in os.listdir(os.path.join(repo, "log")):              # oudere logs weg uit de repo (blijven op de VPS)
         if f.endswith(".jsonl") and f not in {x[4:] for x in out if x.startswith("log/")}:
             os.remove(os.path.join(repo, "log", f))
+    out += export_bars(p["bars"], os.path.join(repo, "bars"), now)
     du = shutil.disk_usage(p["data"])
     _write(os.path.join(repo, "vps.json"), {
         "verzameld": datetime.fromtimestamp(now, timezone.utc).isoformat(timespec="seconds"),
